@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../crudAdmin/event_model.dart';
-import '../crudAdmin/event_repository.dart';
+import 'event_model.dart';
+import 'event_repository.dart';
 
 class EventController extends ChangeNotifier {
   final EventRepository _repo = EventRepository();

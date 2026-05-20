@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../components/inputs/app_text_field.dart';
 import '../../components/navigation/bottom_nav_bar.dart';
-import '../../crudAdmin/event_controller.dart';
+import '../../crudEvent/event_controller.dart';
 import 'package:provider/provider.dart';
 
 class CreateEventPage extends StatefulWidget {

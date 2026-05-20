@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../crudAdmin/event_model.dart';
+import 'event_model.dart';
 
 class EventRepository {
   // Referência à coleção "eventos" no Firestore
