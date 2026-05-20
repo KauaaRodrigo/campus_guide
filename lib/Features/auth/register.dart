@@ -1,8 +1,24 @@
-import 'package:campus_guide/login/login.dart';
+/*
+  Tela de registro de usuário.
+
+  Formulário básico para coletar matrícula, email institucional e senha.
+  Este arquivo usa `Popups` para mostrar o fluxo de confirmação de email
+  (método `esperandoConfirmacao`) — o popup gerencia o redirecionamento
+  posterior para a tela de login.
+*/
+import 'package:campus_guide/Features/auth/login.dart';
+import 'package:campus_guide/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'auth_service.dart';
 import 'popups.dart';
 
+/// Widget de cadastro.
+///
+/// - Valida matrícula, email e senha de forma local.
+/// - Ao enviar o formulário com sucesso chama `Popups.esperandoConfirmacao`
+///   que apresenta ao usuário o próximo passo (confirmação por email) e
+///   o redireciona para a tela de login quando aplicável.
 class Register extends StatefulWidget {
   const Register({super.key});
 
@@ -14,12 +30,51 @@ class Register extends StatefulWidget {
 
 class _RegisterState extends State<Register> {
   final _formkey = GlobalKey<FormState>();
-
   final TextEditingController emailController = TextEditingController();
-
   final TextEditingController senhaController = TextEditingController();
-
   final TextEditingController matriculaController = TextEditingController();
+
+  final AuthService _authService = AuthService();
+  bool _carregando = false;
+
+  void _registrar() async {
+    if (_formkey.currentState!.validate()) {
+      setState(() {
+        _carregando = true;
+      });
+
+      try {
+        await _authService.cadastrarUsuario(
+          matricula: matriculaController.text,
+          email: emailController.text,
+          senha: senhaController.text,
+        );
+
+        if (!mounted) return;
+
+        Popups popup = Popups();
+        popup.esperandoConfirmacao(context);
+
+        matriculaController.clear();
+        emailController.clear();
+        senhaController.clear();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _carregando = false;
+          });
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +85,7 @@ class _RegisterState extends State<Register> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-              padding: const EdgeInsets.only(top: 45),
+                padding: const EdgeInsets.only(top: 45),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: Image.asset(
@@ -45,27 +100,24 @@ class _RegisterState extends State<Register> {
                   alignment: Alignment.topCenter,
                   width: 350,
                   height: 600,
-                  padding: EdgeInsets.only(top: 40),
-                  child: (Form(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Form(
                     key: _formkey,
                     child: Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(
-                            left: 17,
-                            bottom: 20,
-                          ),
+                          padding: const EdgeInsets.only(left: 17, bottom: 20),
                           child: Column(
                             children: [
                               Align(
                                 alignment: Alignment.topLeft,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: 10,
-                                  ),
+                                  padding: const EdgeInsets.only(bottom: 10),
                                   child: Text(
                                     'Cadastre-se',
-                                    style: Theme.of(context).textTheme.displayLarge,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.displayLarge,
                                   ),
                                 ),
                               ),
@@ -73,40 +125,32 @@ class _RegisterState extends State<Register> {
                                 alignment: Alignment.topLeft,
                                 child: Row(
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Já tem uma conta?',
                                       style: TextStyle(fontSize: 12),
                                     ),
                                     TextButton(
                                       style: TextButton.styleFrom(
-                                        padding: EdgeInsets.only(
-                                          bottom: 0,
-                                          top: 0,
-                                          right: 0,
-                                          left: 3,
-                                        ),
+                                        padding: const EdgeInsets.only(left: 3),
                                         overlayColor: Colors.transparent,
                                         minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize
-                                            .shrinkWrap,
-                                        foregroundColor: Color.fromARGB(
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        foregroundColor: const Color.fromARGB(
                                           255,
                                           48,
                                           60,
                                           231,
                                         ),
                                       ),
-                                      child: Text(
+                                      child: const Text(
                                         'Entre',
                                         style: TextStyle(fontSize: 12),
                                       ),
                                       onPressed: () {
-                                        Navigator.push(
+                                        Navigator.pushNamed(
                                           context,
-              
-                                          MaterialPageRoute(
-                                            builder: (context) => Login(),
-                                          ),
+                                          AppRoutes.login,
                                         );
                                       },
                                     ),
@@ -116,7 +160,7 @@ class _RegisterState extends State<Register> {
                             ],
                           ),
                         ),
-              
+
                         Opacity(
                           opacity: 0.2,
                           child: TextFormField(
@@ -124,105 +168,83 @@ class _RegisterState extends State<Register> {
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],
-              
                             controller: matriculaController,
-              
                             decoration: InputDecoration(
                               labelText: 'Matrícula',
-                              labelStyle: TextStyle(fontSize: 12),
+                              labelStyle: const TextStyle(fontSize: 12),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
                             ),
-              
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'digite sua matrícula';
+                                return 'Digite sua matrícula';
                               }
-              
-                              if (value.length < 11) {
-                                return 'Matrícula invalida';
-                              }
-              
-                              if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                                return 'Digite apenas números';
-                              }
-              
+                              if (value.length < 4) return 'Matrícula inválida';
                               return null;
                             },
                           ),
                         ),
-              
-                        SizedBox(height: 20),
-              
+
+                        const SizedBox(height: 20),
+
                         Opacity(
                           opacity: 0.2,
                           child: TextFormField(
                             controller: emailController,
-              
+                            keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
                               labelText: 'Email (Institucional)',
-                              labelStyle: TextStyle(fontSize: 12),
+                              labelStyle: const TextStyle(fontSize: 12),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
                             ),
-              
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'digite o email';
+                                return 'Digite o email';
                               }
-              
-                              if (!value.contains('@')) {
-                                return 'Email invalido';
-                              }
-              
+                              if (!value.contains('@')) return 'Email invalido';
                               return null;
                             },
                           ),
                         ),
-              
-                        SizedBox(height: 20),
-              
+
+                        const SizedBox(height: 20),
+
                         Opacity(
                           opacity: 0.2,
                           child: TextFormField(
                             controller: senhaController,
-              
+                            obscureText: true,
                             decoration: InputDecoration(
                               labelText: 'Senha',
-                              labelStyle: TextStyle(fontSize: 12),
+                              labelStyle: const TextStyle(fontSize: 12),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
                             ),
-              
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Digite a senha';
                               }
-              
+                              if (value.length < 6) {
+                                return 'A senha deve ter pelo menos 6 caracteres';
+                              }
                               return null;
                             },
                           ),
                         ),
-              
-                        SizedBox(height: 20),
-              
+
+                        const SizedBox(height: 20),
+
                         SizedBox(
                           width: 500,
                           height: 45,
-              
                           child: ElevatedButton(
-                            onPressed: () {
-                              if (_formkey.currentState!.validate()) {
-                                Popups popup = Popups();
-                                popup.esperandoConfirmacao(context);
-                              }
-                            },
-                            child: Text('Avançar', style: Theme.of(context).textTheme.labelLarge,),
+                            onPressed: _carregando ? null : _registrar,
                             style: TextButton.styleFrom(
-                              backgroundColor: Color.fromARGB(
+                              backgroundColor: const Color.fromARGB(
                                 255,
                                 48,
                                 60,
@@ -233,11 +255,27 @@ class _RegisterState extends State<Register> {
                                 borderRadius: BorderRadius.circular(15),
                               ),
                             ),
+                            child: _carregando
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    'Avançar',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(color: Colors.white),
+                                  ),
                           ),
                         ),
                       ],
                     ),
-                  )),
+                  ),
                 ),
               ),
             ],

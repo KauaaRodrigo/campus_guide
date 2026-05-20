@@ -1,3 +1,8 @@
+/// Modelo de usuário da aplicação.
+///
+/// Representa os dados principais de um usuário armazenados no backend.
+/// Fornece um `fromMap` para construir a instância a partir de um documento
+/// (ex.: Firebase) e `toMap` para serializar antes de persistir.
 class AppUser {
   final String id;
   final String name;
@@ -24,11 +29,6 @@ class AppUser {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'email': email,
-      'matricula': matricula,
-      'role': role,
-    };
+    return {'name': name, 'email': email, 'matricula': matricula, 'role': role};
   }
 }

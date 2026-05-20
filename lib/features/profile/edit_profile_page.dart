@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../components/buttons/primary_button.dart';
-import '../../components/dialogs/success_dialog.dart';
-import '../../components/inputs/app_text_field.dart';
-import '../../components/inputs/password_field.dart';
+import '../../Components/buttons/primary_button.dart';
+import '../../Components/dialogs/success_dialog.dart';
+import '../../Components/inputs/app_text_field.dart';
+import '../../Components/inputs/password_field.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../components/buttons/primary_button.dart';
-import '../../components/dialogs/logout_dialog.dart';
-import '../../components/navigation/bottom_nav_bar.dart';
+import '../../Components/buttons/primary_button.dart';
+import '../../Components/dialogs/logout_dialog.dart';
+//import '../../Components/navigation/bottom_nav_bar.dart';
 
-import '../events/event_details_page.dart';
-import 'edit_profile_page.dart';
+import 'package:campus_guide/routes/app_routes.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,14 +21,14 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: currentIndex,
-        onTap: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
-      ),
+      //bottomNavigationBar: AppBottomNavBar(
+        //currentIndex: currentIndex,
+        //onTap: (index) {
+          //setState(() {
+            //currentIndex = index;
+         // });
+        //},
+      //),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -88,11 +87,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             text: "Editar Perfil",
                             height: 50,
                             onPressed: () async {
-                              await Navigator.push(
+                              await Navigator.pushNamed(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => const EditProfilePage(),
-                                ),
+                                AppRoutes.editProfile,
                               );
                             },
                           ),
@@ -212,16 +209,15 @@ class _ProfilePageState extends State<ProfilePage> {
   ) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
+        Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (_) => EventDetailsPage(
-              title: title,
-              description: description,
-              location: "Auditório Padre Arnobio",
-              speakers: speakers,
-            ),
-          ),
+          AppRoutes.eventDetails,
+          arguments: {
+            'title': title,
+            'description': description,
+            'location': 'Auditório Padre Arnobio',
+            'speakers': speakers,
+          },
         );
       },
       child: Container(
