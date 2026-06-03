@@ -19,11 +19,11 @@ class AppTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      enabled: enabled,
       decoration: InputDecoration(
+        enabled: enabled,
         hintText: hint,
         filled: true,
-        fillColor: enabled ? Colors.white : Colors.grey.shade200,
+        fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,

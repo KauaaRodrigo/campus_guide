@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'event_model.dart';
 import 'event_repository.dart';
@@ -60,6 +61,7 @@ class EventController extends ChangeNotifier {
         curso: curso,
         periodo: periodo,
         ministrantes: ministrantes,
+        criadoPor: FirebaseAuth.instance.currentUser?.uid ?? '',
         criadoEm: agora,
         atualizadoEm: agora,
       );

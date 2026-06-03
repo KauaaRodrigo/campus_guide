@@ -1,12 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:campus_guide/crudEvent/event_controller.dart';
-import 'package:campus_guide/crudEvent/event_model.dart';
-import 'package:campus_guide/features/events/edit_event_page.dart';
 
-// HOME PAGE
-// Conectada ao EventController — carrega eventos reais do Firestore.
-// Não depende de Provider: o controller é instanciado localmente e descartado
-// no dispose(), igual ao padrão adotado no create_page.dart.
+import '../../crudEvent/enrollment_controller.dart';
+import '../../crudEvent/event_controller.dart';
+import '../../crudEvent/event_model.dart';
+import '../auth/user.dart';
+import 'edit_event_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,12 +17,16 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _controller = EventController();
+  final _enrollmentController = EnrollmentController();
+
+  AppUser? _usuarioAtual;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_rebuild);
-    _controller.carregarEventos();
+    _enrollmentController.addListener(_rebuild);
+    _carregarDados();
   }
 
   void _rebuild() {
@@ -32,13 +36,45 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _controller.removeListener(_rebuild);
+    _enrollmentController.removeListener(_rebuild);
     _controller.dispose();
+    _enrollmentController.dispose();
     super.dispose();
   }
 
-  // Helpers de data
+  Future<void> _carregarDados() async {
+    await _carregarUsuarioAtual();
+    await _controller.carregarEventos();
 
-  /// Retorna "Hoje", "Amanhã" ou "dd/MM" para exibir no card.
+    final usuario = _usuarioAtual;
+    if (usuario != null) {
+      await _enrollmentController.carregarInscricoes(usuario.id);
+    }
+  }
+
+  Future<void> _carregarUsuarioAtual() async {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('usuarios')
+        .doc(firebaseUser.uid)
+        .get();
+    final data = doc.data();
+    if (data == null) return;
+
+    _usuarioAtual = AppUser.fromMap(doc.id, data);
+  }
+
+  Future<void> _recarregarAposInscricao() async {
+    await _controller.carregarEventos();
+
+    final usuario = _usuarioAtual;
+    if (usuario != null) {
+      await _enrollmentController.carregarInscricoes(usuario.id);
+    }
+  }
+
   String _labelData(DateTime dt) {
     final hoje = DateTime.now();
     if (_mesmoDia(dt, hoje)) return 'Hoje';
@@ -54,8 +90,6 @@ class _HomePageState extends State<HomePage> {
       '${dt.hour.toString().padLeft(2, '0')}:'
       '${dt.minute.toString().padLeft(2, '0')}';
 
-  // Build
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,11 +98,13 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 14),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
               child: Text(
-                'Olá, Docente!',
-                style: TextStyle(
+                _usuarioAtual == null
+                    ? 'Olá!'
+                    : 'Olá, ${_usuarioAtual!.name.split(' ').first}!',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -83,14 +119,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildBody() {
-    // Carregando
     if (_controller.carregando && _controller.eventos.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
 
-    // Erro
     if (_controller.erro != null) {
       return Center(
         child: Column(
@@ -105,7 +139,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: _controller.carregarEventos,
+              onPressed: _carregarDados,
               icon: const Icon(Icons.refresh),
               label: const Text('Tentar novamente'),
             ),
@@ -114,7 +148,6 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // Lista vazia
     if (_controller.eventos.isEmpty) {
       return const Center(
         child: Text(
@@ -124,9 +157,8 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // Lista de eventos
     return RefreshIndicator(
-      onRefresh: _controller.carregarEventos,
+      onRefresh: _carregarDados,
       color: const Color(0xFF1535C9),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -152,7 +184,10 @@ class _HomePageState extends State<HomePage> {
       builder: (_) => _EventDetailsModal(
         evento: evento,
         controller: _controller,
+        enrollmentController: _enrollmentController,
+        usuarioAtual: _usuarioAtual,
         onEditar: () => _abrirEdicao(evento),
+        onInscricaoAlterada: _recarregarAposInscricao,
       ),
     );
   }
@@ -167,10 +202,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// EVENT LIST CARD
-// ---------------------------------------------------------------------------
 
 class _EventListCard extends StatelessWidget {
   final EventModel evento;
@@ -200,11 +231,12 @@ class _EventListCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // ── Caixa de data/hora ───────────────────────────────────────
               Container(
                 width: 82,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE4E4E4),
                   borderRadius: BorderRadius.circular(10),
@@ -215,12 +247,17 @@ class _EventListCard extends StatelessWidget {
                     Text(
                       labelData,
                       style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF555555)),
+                        fontSize: 13,
+                        color: Color(0xFF555555),
+                      ),
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 4),
                       child: Divider(
-                          height: 1, thickness: 1, color: Color(0xFFAAAAAA)),
+                        height: 1,
+                        thickness: 1,
+                        color: Color(0xFFAAAAAA),
+                      ),
                     ),
                     Text(
                       labelHora,
@@ -234,7 +271,6 @@ class _EventListCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // ── Título + descrição ───────────────────────────────────────
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +289,9 @@ class _EventListCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF555555)),
+                        fontSize: 13,
+                        color: Color(0xFF555555),
+                      ),
                     ),
                   ],
                 ),
@@ -266,23 +304,30 @@ class _EventListCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// EVENT DETAILS MODAL
-// ---------------------------------------------------------------------------
-
 class _EventDetailsModal extends StatelessWidget {
   final EventModel evento;
   final EventController controller;
+  final EnrollmentController enrollmentController;
+  final AppUser? usuarioAtual;
   final VoidCallback onEditar;
+  final Future<void> Function() onInscricaoAlterada;
 
   const _EventDetailsModal({
     required this.evento,
     required this.controller,
+    required this.enrollmentController,
+    required this.usuarioAtual,
     required this.onEditar,
+    required this.onInscricaoAlterada,
   });
 
   @override
   Widget build(BuildContext context) {
+    final usuario = usuarioAtual;
+    final isDonoDocente =
+        usuario?.role == 'docente' && evento.criadoPor == usuario?.id;
+    final isInscrito = enrollmentController.estaInscrito(evento.id);
+
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       maxChildSize: 0.96,
@@ -295,7 +340,6 @@ class _EventDetailsModal extends StatelessWidget {
           ),
           child: Column(
             children: [
-              // ── Drag handle ──────────────────────────────────────────────
               const SizedBox(height: 8),
               Center(
                 child: Container(
@@ -307,15 +351,15 @@ class _EventDetailsModal extends StatelessWidget {
                   ),
                 ),
               ),
-              // ── Header ───────────────────────────────────────────────────
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          size: 20),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 20,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                     Expanded(
@@ -323,18 +367,25 @@ class _EventDetailsModal extends StatelessWidget {
                         evento.titulo,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          color: Colors.red, size: 26),
-                      onPressed: () => _showDeleteDialog(context),
-                    ),
+                    if (isDonoDocente)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Colors.red,
+                          size: 26,
+                        ),
+                        onPressed: () => _showDeleteDialog(context),
+                      )
+                    else
+                      const SizedBox(width: 48),
                   ],
                 ),
               ),
-              // ── Conteúdo scrollável ──────────────────────────────────────
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -342,99 +393,121 @@ class _EventDetailsModal extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Status + vagas
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(children: [
-                            const Text('Status: ',
-                                style: TextStyle(fontWeight: FontWeight.w500)),
-                            Text(
-                              evento.status == EventStatus.cancelado
-                                  ? 'Cancelado'
-                                  : 'Aberto',
-                              style: TextStyle(
-                                color: evento.status == EventStatus.cancelado
-                                    ? Colors.red
-                                    : Colors.green,
-                                fontWeight: FontWeight.w600,
+                          Row(
+                            children: [
+                              const Text(
+                                'Status: ',
+                                style: TextStyle(fontWeight: FontWeight.w500),
                               ),
-                            ),
-                          ]),
-                          Row(children: [
-                            const Text('Resta(m) '),
-                            Text(
-                              '${evento.vagasRestantes}',
-                              style: const TextStyle(
+                              Text(
+                                evento.status == EventStatus.cancelado
+                                    ? 'Cancelado'
+                                    : 'Aberto',
+                                style: TextStyle(
+                                  color: evento.status == EventStatus.cancelado
+                                      ? Colors.red
+                                      : Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const Text('Resta(m) '),
+                              Text(
+                                '${evento.vagasRestantes}',
+                                style: const TextStyle(
                                   color: Colors.green,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                            const Text(' vaga(s)'),
-                          ]),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Text(' vaga(s)'),
+                            ],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 14),
-                      // Descrição
-                      Text(evento.descricao,
-                          style:
-                              const TextStyle(fontSize: 14, height: 1.55)),
+                      Text(
+                        evento.descricao,
+                        style: const TextStyle(fontSize: 14, height: 1.55),
+                      ),
                       const SizedBox(height: 14),
-                      // Local
                       RichText(
                         text: TextSpan(
                           style: const TextStyle(
-                              color: Colors.black87, fontSize: 14),
+                            color: Colors.black87,
+                            fontSize: 14,
+                          ),
                           children: [
                             const TextSpan(
-                                text: 'Local',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold)),
+                              text: 'Local',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             TextSpan(text: ': ${evento.local}'),
                           ],
                         ),
                       ),
                       const SizedBox(height: 22),
-                      // Ministrantes
                       if (evento.ministrantes.isNotEmpty) ...[
                         const Center(
                           child: Text(
                             'Ministrantes',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 14),
-                        ...evento.ministrantes
-                            .map((m) => _SpeakerTile(ministrante: m)),
+                        ...evento.ministrantes.map(
+                          (m) => _SpeakerTile(ministrante: m),
+                        ),
                       ],
                       const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
-              // ── Botões de ação ───────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _PrimaryButton(
-                        label: 'Editar evento',
-                        onPressed: () {
-                          Navigator.pop(context);
-                          onEditar();
-                        },
+                child: isDonoDocente
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: _PrimaryButton(
+                              label: 'Editar evento',
+                              onPressed: () {
+                                Navigator.pop(context);
+                                onEditar();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _PrimaryButton(
+                              label: 'Verificar inscritos',
+                              onPressed: () => _showEnrolledList(context),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: _PrimaryButton(
+                              label: isInscrito
+                                  ? 'Cancelar inscrição'
+                                  : 'Inscrever-se',
+                              onPressed: () =>
+                                  _alterarInscricao(context, isInscrito),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PrimaryButton(
-                        label: 'Verificar inscritos',
-                        onPressed: () => _showEnrolledList(context),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -442,8 +515,6 @@ class _EventDetailsModal extends StatelessWidget {
       },
     );
   }
-
-  // ── Diálogos ─────────────────────────────────────────────────────────────
 
   void _showDeleteDialog(BuildContext context) {
     showDialog(
@@ -456,8 +527,8 @@ class _EventDetailsModal extends StatelessWidget {
         cancelLabel: 'Cancelar',
         extraLinkText: 'Deseja cancelar o evento?',
         onConfirm: () async {
-          Navigator.pop(context); // fecha dialog
-          Navigator.pop(context); // fecha modal
+          Navigator.pop(context);
+          Navigator.pop(context);
           await controller.deletarEvento(evento.id);
         },
         onCancel: () => Navigator.pop(context),
@@ -487,19 +558,64 @@ class _EventDetailsModal extends StatelessWidget {
     );
   }
 
-  void _showEnrolledList(BuildContext context) {
-    // TODO: buscar lista de inscritos do Firestore via repository
-    // Por enquanto exibe dialog placeholder
+  Future<void> _showEnrolledList(BuildContext context) async {
+    final students = await enrollmentController.buscarInscritosDoEvento(
+      evento.id,
+    );
+
+    if (!context.mounted) return;
     showDialog(
       context: context,
-      builder: (_) => const _EnrolledListDialog(students: []),
+      builder: (_) => _EnrolledListDialog(students: students),
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// SPEAKER TILE
-// ---------------------------------------------------------------------------
+  Future<void> _alterarInscricao(BuildContext context, bool isInscrito) async {
+    final usuario = usuarioAtual;
+    if (usuario == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Faça login para se inscrever.')),
+      );
+      return;
+    }
+
+    final ok = isInscrito
+        ? await enrollmentController.desinscrever(
+            userID: usuario.id,
+            eventoID: evento.id,
+          )
+        : await enrollmentController.inscrever(
+            userID: usuario.id,
+            eventoID: evento.id,
+          );
+
+    if (!context.mounted) return;
+
+    if (ok) {
+      await onInscricaoAlterada();
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isInscrito
+                ? 'Inscrição cancelada com sucesso.'
+                : 'Inscrição realizada com sucesso.',
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            enrollmentController.erro ??
+                'Não foi possível atualizar inscrição.',
+          ),
+        ),
+      );
+    }
+  }
+}
 
 class _SpeakerTile extends StatelessWidget {
   final Map<String, String> ministrante;
@@ -516,24 +632,20 @@ class _SpeakerTile extends StatelessWidget {
           CircleAvatar(
             radius: 34,
             backgroundColor: const Color(0xFFE0E0E0),
-            backgroundImage:
-                imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+            backgroundImage: imageUrl.isNotEmpty
+                ? NetworkImage(imageUrl)
+                : null,
             child: imageUrl.isEmpty
                 ? const Icon(Icons.person, size: 34, color: Colors.grey)
                 : null,
           ),
           const SizedBox(width: 16),
-          Text(ministrante['nome'] ?? '',
-              style: const TextStyle(fontSize: 16)),
+          Text(ministrante['nome'] ?? '', style: const TextStyle(fontSize: 16)),
         ],
       ),
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// PRIMARY BUTTON
-// ---------------------------------------------------------------------------
 
 class _PrimaryButton extends StatelessWidget {
   final String label;
@@ -549,20 +661,16 @@ class _PrimaryButton extends StatelessWidget {
         backgroundColor: const Color(0xFF1535C9),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         elevation: 0,
       ),
-      child: Text(label,
-          style:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// CONFIRM DIALOG  (deletar / cancelar evento)
-// ---------------------------------------------------------------------------
 
 class _ConfirmDialog extends StatelessWidget {
   final String title;
@@ -588,25 +696,27 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 48, color: Colors.black87),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: Colors.black87,
+            ),
             const SizedBox(height: 12),
-            Text(title,
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 14, color: Color(0xFF555555)),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF555555)),
             ),
             if (extraLinkText != null) ...[
               const SizedBox(height: 8),
@@ -633,7 +743,8 @@ class _ConfirmDialog extends StatelessWidget {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       elevation: 0,
                     ),
                     child: Text(confirmLabel),
@@ -648,7 +759,8 @@ class _ConfirmDialog extends StatelessWidget {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       elevation: 0,
                     ),
                     child: Text(cancelLabel),
@@ -663,10 +775,6 @@ class _ConfirmDialog extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// ENROLLED LIST DIALOG
-// ---------------------------------------------------------------------------
-
 class _EnrolledListDialog extends StatelessWidget {
   final List<Map<String, String>> students;
 
@@ -675,11 +783,11 @@ class _EnrolledListDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.6),
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -688,9 +796,10 @@ class _EnrolledListDialog extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Lista de inscritos',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Lista de inscritos',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.pop(context),
@@ -703,31 +812,36 @@ class _EnrolledListDialog extends StatelessWidget {
               child: students.isEmpty
                   ? const Padding(
                       padding: EdgeInsets.all(24),
-                      child: Text('Nenhum inscrito ainda.',
-                          style: TextStyle(color: Colors.grey)),
+                      child: Text(
+                        'Nenhum inscrito ainda.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     )
                   : ListView.builder(
                       shrinkWrap: true,
                       padding: const EdgeInsets.all(16),
                       itemCount: students.length,
                       itemBuilder: (context, i) {
-                        final s = students[i];
+                        final student = students[i];
                         final parts = <String>[
-                          if ((s['name'] ?? '').isNotEmpty) s['name']!,
-                          if ((s['registration'] ?? '').isNotEmpty)
-                            s['registration']!,
-                          if ((s['course'] ?? '').isNotEmpty) s['course']!,
+                          if ((student['name'] ?? '').isNotEmpty)
+                            student['name']!,
+                          if ((student['registration'] ?? '').isNotEmpty)
+                            student['registration']!,
+                          if ((student['course'] ?? '').isNotEmpty)
+                            student['course']!,
                         ];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('• ',
-                                  style: TextStyle(fontSize: 14)),
+                              const Text('- ', style: TextStyle(fontSize: 14)),
                               Expanded(
-                                child: Text(parts.join(' | '),
-                                    style: const TextStyle(fontSize: 14)),
+                                child: Text(
+                                  parts.join(' | '),
+                                  style: const TextStyle(fontSize: 14),
+                                ),
                               ),
                             ],
                           ),

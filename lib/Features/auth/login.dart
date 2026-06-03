@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'package:campus_guide/routes/app_routes.dart';
-
+import 'recuperar_senha.dart';
 /// Tela de login do aplicativo.
 ///
 /// - Usa um `Form` com validação simples para `email` e `senha`.
@@ -283,7 +283,14 @@ class _LoginState extends State<Login> {
                           ' Esqueci minha senha',
                           style: TextStyle(fontSize: 12),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RecuperarSenha(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

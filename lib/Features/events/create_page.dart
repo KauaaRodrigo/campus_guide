@@ -336,7 +336,10 @@ class _CampoComIcone extends StatelessWidget {
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
@@ -374,13 +377,16 @@ class _DropdownField<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       hint: Text(hint, style: const TextStyle(color: Colors.black45)),
       isExpanded: true,
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
@@ -395,10 +401,10 @@ class _DropdownField<T> extends StatelessWidget {
         ),
       ),
       items: items
-          .map((item) => DropdownMenuItem<T>(
-                value: item,
-                child: Text(item.toString()),
-              ))
+          .map(
+            (item) =>
+                DropdownMenuItem<T>(value: item, child: Text(item.toString())),
+          )
           .toList(),
       onChanged: onChanged,
     );

@@ -64,12 +64,14 @@ class _EditEventPageState extends State<EditEventPage> {
     final e = widget.evento;
     _tituloCtrl = TextEditingController(text: e.titulo);
     _diaCtrl = TextEditingController(
-      text: '${e.dataInicio.day.toString().padLeft(2, '0')}/'
+      text:
+          '${e.dataInicio.day.toString().padLeft(2, '0')}/'
           '${e.dataInicio.month.toString().padLeft(2, '0')}/'
           '${e.dataInicio.year}',
     );
     _horaCtrl = TextEditingController(
-      text: '${e.dataInicio.hour.toString().padLeft(2, '0')}:'
+      text:
+          '${e.dataInicio.hour.toString().padLeft(2, '0')}:'
           '${e.dataInicio.minute.toString().padLeft(2, '0')}',
     );
     _localCtrl = TextEditingController(text: e.local);
@@ -78,7 +80,10 @@ class _EditEventPageState extends State<EditEventPage> {
 
     _cursoSelecionado = _cursos.contains(e.curso) ? e.curso : null;
     _periodoSelecionado = _periodos.contains(e.periodo) ? e.periodo : null;
-    _ministrantes = e.ministrantes.map((m) => m['nome'] ?? '').where((n) => n.isNotEmpty).toList();
+    _ministrantes = e.ministrantes
+        .map((m) => m['nome'] ?? '')
+        .where((n) => n.isNotEmpty)
+        .toList();
   }
 
   void _atualizarTela() {
@@ -368,7 +373,10 @@ class _CampoComIcone extends StatelessWidget {
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
@@ -408,13 +416,16 @@ class _DropdownField<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       hint: Text(hint, style: const TextStyle(color: Colors.black45)),
       isExpanded: true,
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
@@ -429,10 +440,10 @@ class _DropdownField<T> extends StatelessWidget {
         ),
       ),
       items: items
-          .map((item) => DropdownMenuItem<T>(
-                value: item,
-                child: Text(item.toString()),
-              ))
+          .map(
+            (item) =>
+                DropdownMenuItem<T>(value: item, child: Text(item.toString())),
+          )
           .toList(),
       onChanged: onChanged,
     );

@@ -1,8 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 //import 'package:campus_guide/routes/app_routes.dart';
 import 'package:campus_guide/Features/auth/login.dart';
+
 class Popups {
   /// Mostra um diálogo de aguardando confirmação de e-mail.
   ///
@@ -12,15 +13,17 @@ class Popups {
   /// - Possui ação para reenviar/avançar que manipula a navegação para
   ///   a tela de `Login` quando necessário.
   void esperandoConfirmacao(BuildContext context) {
+    // 1. Buscamos a instância inicial para enviar o e-mail
     final FirebaseAuth auth = FirebaseAuth.instance;
-    User? user = auth.currentUser;
+    User? userInicial = auth.currentUser;
 
     Timer? checkTimer;
     Timer? timeoutTimer;
     int tempoRestante = 60;
 
-    if (user != null && !user.emailVerified) {
-      user.sendEmailVerification().catchError((e) {
+    // 2. Envio do e-mail de verificação (Mantido do seu código)
+    if (userInicial != null && !userInicial.emailVerified) {
+      userInicial.sendEmailVerification().catchError((e) {
         debugPrint("Erro ao enviar e-mail: $e");
       });
     }
@@ -29,30 +32,40 @@ class Popups {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
+        
+        // --- 3. O TIMER CORRIGIDO: A Mágica do reload() ---
         checkTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
-          user = auth.currentUser;
-          if (user != null) {
-            await user!.reload();
-
-            if (auth.currentUser!.emailVerified) {
-              timer.cancel();
-              timeoutTimer?.cancel();
-              if (Navigator.canPop(dialogContext)) {
-                Navigator.pop(dialogContext);
-                encontrado(context);
+          // Buscamos o usuário ATUAL dentro do ciclo, não a variável lá de cima
+          User? currentUser = FirebaseAuth.instance.currentUser;
+          
+          if (currentUser != null) {
+            // Este await recarrega o estado real do servidor (Firebase)
+            await currentUser.reload();
+            
+            // Depois do reload, checamos se o status mudou para true
+            if (FirebaseAuth.instance.currentUser!.emailVerified) {
+              timer.cancel(); // Para de procurar
+              timeoutTimer?.cancel(); // Cancela o limite de 60s
+              
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext); // Fecha este popup de "Esperando"
+                encontrado(context);          // Dispara o seu popup de "Encontrado"
               }
             }
           }
         });
+        // ----------------------------------------------------
 
+        // 4. Timer de Limite de Tempo (Mantido do seu código)
         timeoutTimer = Timer(Duration(seconds: tempoRestante), () {
           checkTimer?.cancel();
-          if (Navigator.canPop(dialogContext)) {
+          if (dialogContext.mounted) {
             Navigator.pop(dialogContext); 
             naoEncontrado(context); 
           }
         });
 
+        // 5. O SEU LAYOUT (Mantido intacto)
         return AlertDialog(
           contentPadding: EdgeInsets.zero,
           shape: const UnderlineInputBorder(
@@ -129,8 +142,8 @@ class Popups {
                     child: Text(
                       "Aguardando...",
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color.fromARGB(255, 114, 114, 114),
-                      ),
+                            color: const Color.fromARGB(255, 114, 114, 114),
+                          ),
                     ),
                   ),
                 ),
@@ -156,8 +169,9 @@ class Popups {
                   style: TextStyle(fontSize: 12),
                 ),
                 onPressed: () async {
-                  if (user != null) {
-                    await user!.sendEmailVerification();
+                  // Ajustado para usar a variável auth.currentUser mais recente
+                  if (auth.currentUser != null) {
+                    await auth.currentUser!.sendEmailVerification();
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -174,7 +188,7 @@ class Popups {
       },
     );
   }
-
+  
   /// Mostra o diálogo indicando que o e-mail não foi confirmado.
   ///
   /// - O botão "Voltar" fecha o diálogo atual e redireciona para

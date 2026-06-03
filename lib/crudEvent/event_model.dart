@@ -15,6 +15,7 @@ class EventModel {
   final String periodo;
   final List<Map<String, String>> ministrantes;
   final EventStatus status;
+  final String criadoPor;
   final DateTime criadoEm;
   final DateTime atualizadoEm;
 
@@ -31,6 +32,7 @@ class EventModel {
     this.periodo = '',
     this.ministrantes = const [],
     this.status = EventStatus.ativo,
+    this.criadoPor = '',
     required this.criadoEm,
     required this.atualizadoEm,
   });
@@ -57,6 +59,7 @@ class EventModel {
       'periodo': periodo,
       'ministrantes': ministrantes,
       'status': status.name,
+      'criadoPor': criadoPor,
       'criadoEm': Timestamp.fromDate(criadoEm),
       'atualizadoEm': Timestamp.fromDate(atualizadoEm),
     };
@@ -82,6 +85,7 @@ class EventModel {
         ),
       ),
       status: EventStatus.values.byName(data['status'] ?? 'ativo'),
+      criadoPor: data['criadoPor'] ?? '',
       criadoEm: (data['criadoEm'] as Timestamp).toDate(),
       atualizadoEm: (data['atualizadoEm'] as Timestamp).toDate(),
     );
@@ -99,6 +103,7 @@ class EventModel {
     String? periodo,
     List<Map<String, String>>? ministrantes,
     EventStatus? status,
+    String? criadoPor,
   }) {
     return EventModel(
       id: id,
@@ -113,6 +118,7 @@ class EventModel {
       periodo: periodo ?? this.periodo,
       ministrantes: ministrantes ?? this.ministrantes,
       status: status ?? this.status,
+      criadoPor: criadoPor ?? this.criadoPor,
       criadoEm: criadoEm,
       atualizadoEm: DateTime.now(),
     );
