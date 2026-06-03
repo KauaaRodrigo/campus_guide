@@ -1,5 +1,5 @@
 /*
-  Entrada do aplicativo e configuração do `MaterialApp`.
+  Entrada do aplicativo e configuração do `MaterialApp`..
 
   - Inicializa o Firebase.
   - Define `initialRoute` e `onGenerateRoute` apontando para `AppRouter`.
