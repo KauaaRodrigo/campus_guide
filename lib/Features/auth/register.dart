@@ -89,7 +89,7 @@ class _RegisterState extends State<Register> {
                   alignment: Alignment.topCenter,
                   child: Image.asset(
                     'imagens/CampusGuide_png.png',
-                    width: 250,
+                    width: 400,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -114,9 +114,11 @@ class _RegisterState extends State<Register> {
                                   padding: const EdgeInsets.only(bottom: 10),
                                   child: Text(
                                     'Cadastre-se',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.displayLarge,
+                                    style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
                                   ),
                                 ),
                               ),
@@ -126,7 +128,7 @@ class _RegisterState extends State<Register> {
                                   children: [
                                     const Text(
                                       'Já tem uma conta?',
-                                      style: TextStyle(fontSize: 12),
+                                      style: TextStyle(fontSize: 14),
                                     ),
                                     TextButton(
                                       style: TextButton.styleFrom(
@@ -144,7 +146,7 @@ class _RegisterState extends State<Register> {
                                       ),
                                       child: const Text(
                                         'Entre',
-                                        style: TextStyle(fontSize: 12),
+                                        style: TextStyle(fontSize: 14),
                                       ),
                                       onPressed: () {
                                         Navigator.pushReplacementNamed(
@@ -161,7 +163,7 @@ class _RegisterState extends State<Register> {
                         ),
 
                         Opacity(
-                          opacity: 0.2,
+                          opacity: 0.6,
                           child: TextFormField(
                             keyboardType: TextInputType.number,
                             inputFormatters: [
@@ -170,7 +172,7 @@ class _RegisterState extends State<Register> {
                             controller: matriculaController,
                             decoration: InputDecoration(
                               labelText: 'Matrícula',
-                              labelStyle: const TextStyle(fontSize: 12),
+                              labelStyle: const TextStyle(fontSize: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
@@ -188,13 +190,13 @@ class _RegisterState extends State<Register> {
                         const SizedBox(height: 20),
 
                         Opacity(
-                          opacity: 0.2,
+                          opacity: 0.6,
                           child: TextFormField(
                             controller: emailController,
                             keyboardType: TextInputType.emailAddress,
                             decoration: InputDecoration(
                               labelText: 'Email (Institucional)',
-                              labelStyle: const TextStyle(fontSize: 12),
+                              labelStyle: const TextStyle(fontSize: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
@@ -212,13 +214,13 @@ class _RegisterState extends State<Register> {
                         const SizedBox(height: 20),
 
                         Opacity(
-                          opacity: 0.2,
+                          opacity: 0.6,
                           child: TextFormField(
                             controller: senhaController,
                             obscureText: true,
                             decoration: InputDecoration(
                               labelText: 'Senha',
-                              labelStyle: const TextStyle(fontSize: 12),
+                              labelStyle: const TextStyle(fontSize: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),

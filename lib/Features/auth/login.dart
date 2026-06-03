@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'package:campus_guide/routes/app_routes.dart';
 
-/// Widget que representa a tela de login.
+/// Tela de login do aplicativo.
 ///
-/// - Exibe os campos de `email` e `senha` (controladores: `emailController`,
-///   `senhalController`).
-/// - O botão de confirmação valida o formulário e executa a navegação.
+/// - Usa um `Form` com validação simples para `email` e `senha`.
+/// - Ao submeter com sucesso, chama `AuthService.logarUsuario` e navega
+///   para a rota home (`AppRoutes.home`).
+/// - Mensagens de sucesso/erro são exibidas via `SnackBar`.
 class Login extends StatefulWidget {
   const Login({super.key});
 
@@ -17,13 +18,24 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
+  // Chave para acessar e validar o formulário.
   final _formkey = GlobalKey<FormState>();
+
+  // Controladores para os campos de entrada.
   final TextEditingController emailController = TextEditingController();
   final TextEditingController senhalController = TextEditingController();
 
+  // Serviço responsável pela autenticação (encapsula Firebase/REST etc.).
   final AuthService _authService = AuthService();
+
+  // Indica se uma requisição de autenticação está em andamento.
   bool _carregando = false;
 
+  /// Tenta autenticar o usuário com os valores dos controladores.
+  ///
+  /// - Valida o formulário antes de enviar.
+  /// - Exibe um `SnackBar` em caso de sucesso ou erro.
+  /// - Desabilita o botão enquanto a requisição está em andamento.
   void _login() async {
     if (_formkey.currentState!.validate()) {
       setState(() {
@@ -31,11 +43,14 @@ class _LoginState extends State<Login> {
       });
 
       try {
+        // Chamada ao serviço de autenticação. Espera-se que `logarUsuario`
+        // retorne um objeto usuário (ou `null` em caso de falha silenciosa).
         final user = await _authService.logarUsuario(
           email: emailController.text,
           senha: senhalController.text,
         );
 
+        // Se houve retorno válido e o widget ainda está montado, navega.
         if (user != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -44,6 +59,7 @@ class _LoginState extends State<Login> {
             ),
           );
 
+          // Remove todas as rotas anteriores e vai para a home.
           Navigator.pushNamedAndRemoveUntil(
             context,
             AppRoutes.home,
@@ -51,6 +67,7 @@ class _LoginState extends State<Login> {
           );
         }
       } catch (e) {
+        // Em caso de erro, mostra a mensagem (limpa o prefixo 'Exception:').
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -59,6 +76,7 @@ class _LoginState extends State<Login> {
           ),
         );
       } finally {
+        // Garantir que o estado de carregamento volte para false.
         if (mounted) {
           setState(() {
             _carregando = false;
@@ -71,32 +89,37 @@ class _LoginState extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // O `SingleChildScrollView` evita overflow quando o teclado abre.
       body: SingleChildScrollView(
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Logo no topo da tela.
               Padding(
                 padding: const EdgeInsets.only(top: 45),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: Image.asset(
                     'imagens/CampusGuide_png.png',
-                    width: 250,
+                    width: 400,
                     fit: BoxFit.cover,
                   ),
                 ),
               ),
+
+              // Container central com o formulário de login.
               Container(
                 alignment: Alignment.topCenter,
                 width: 350,
                 height: 600,
-                padding: const EdgeInsets.only(top: 40),
+                padding: const EdgeInsets.all(0),
                 child: Form(
                   key: _formkey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Título e link para registro.
                       Padding(
                         padding: const EdgeInsets.only(left: 17, bottom: 20),
                         child: Column(
@@ -107,9 +130,11 @@ class _LoginState extends State<Login> {
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: Text(
                                   'Entrar',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.displayLarge,
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ),
                             ),
@@ -120,8 +145,9 @@ class _LoginState extends State<Login> {
                                 children: [
                                   const Text(
                                     'Não tem uma conta?',
-                                    style: TextStyle(fontSize: 12),
+                                    style: TextStyle(fontSize: 14),
                                   ),
+                                  // Botão para ir à tela de registro.
                                   TextButton(
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.only(left: 3),
@@ -137,8 +163,8 @@ class _LoginState extends State<Login> {
                                       ),
                                     ),
                                     child: const Text(
-                                      'inscreva-se',
-                                      style: TextStyle(fontSize: 12),
+                                      'Inscreva-se',
+                                      style: TextStyle(fontSize: 14),
                                     ),
                                     onPressed: () {
                                       Navigator.pushNamed(
@@ -154,14 +180,17 @@ class _LoginState extends State<Login> {
                         ),
                       ),
 
+                      // Campo de email.
+                      // Observação: Opacidade está baixa (0.2) — verificar se é
+                      // intenção de design ou bug de estilo.
                       Opacity(
-                        opacity: 0.2,
+                        opacity: 0.6,
                         child: TextFormField(
                           controller: emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: 'Email (Institucional)',
-                            labelStyle: const TextStyle(fontSize: 12),
+                            labelStyle: const TextStyle(fontSize: 14),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
@@ -175,16 +204,17 @@ class _LoginState extends State<Login> {
                         ),
                       ),
 
+                      // Campo de senha.
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12, top: 12),
                         child: Opacity(
-                          opacity: 0.2,
+                          opacity: 0.6,
                           child: TextFormField(
                             controller: senhalController,
                             obscureText: true,
                             decoration: InputDecoration(
                               labelText: 'Senha',
-                              labelStyle: const TextStyle(fontSize: 12),
+                              labelStyle: const TextStyle(fontSize: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
@@ -199,6 +229,7 @@ class _LoginState extends State<Login> {
                         ),
                       ),
 
+                      // Botão principal de envio.
                       SizedBox(
                         width: 500,
                         height: 45,
@@ -216,6 +247,7 @@ class _LoginState extends State<Login> {
                               borderRadius: BorderRadius.circular(15),
                             ),
                           ),
+                          // Enquanto carrega, mostra `CircularProgressIndicator`.
                           child: _carregando
                               ? const SizedBox(
                                   width: 20,
@@ -232,6 +264,8 @@ class _LoginState extends State<Login> {
                                 ),
                         ),
                       ),
+
+                      // Link para recuperação de senha (ainda sem implementação).
                       TextButton(
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.only(top: 14),

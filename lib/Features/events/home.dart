@@ -1,97 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:campus_guide/crudEvent/event_controller.dart';
+import 'package:campus_guide/crudEvent/event_model.dart';
+import 'package:campus_guide/features/events/edit_event_page.dart';
 
-class EventData {
-  final String title;
-  final String description;
-  final String location;
-  final String date; // ex: "03/04", "Hoje", "Amanhã"
-  final String time; // ex: "15:30"
-  final List<Map<String, String>> speakers; // {'name': '', 'image': ''}
-  final int remainingVacancies;
-  final bool isOpen;
-  final List<Map<String, String>> enrolledStudents; // {'name','registration','course'}
-
-  const EventData({
-    required this.title,
-    required this.description,
-    required this.location,
-    required this.date,
-    required this.time,
-    required this.speakers,
-    this.remainingVacancies = 0,
-    this.isOpen = true,
-    this.enrolledStudents = const [],
-  });
-}
-
-// Placeholder events (substitua por chamada real)
-final List<EventData> _placeholderEvents = [
-  EventData(
-    title: 'TechConnect 2026: Do Código ao Mercado',
-    description:
-        'Uma palestra focada em quem quer sair da teoria e entrar no jogo de '
-        'verdade. O TechConnect reúne estudantes, desenvolvedores e profissionais '
-        'da área para discutir o que realmente importa: habilidades exigidas pelo '
-        'mercado, projetos que fazem diferença no currículo e caminhos reais para '
-        'conseguir a primeira oportunidade em tecnologia.',
-    location: 'Auditório Padre Arnobio',
-    date: '03/04',
-    time: '15:30',
-    remainingVacancies: 30,
-    isOpen: true,
-    speakers: [
-      {'name': 'Satoro Gojo', 'image': ''},
-      {'name': 'Sofia', 'image': ''},
-      {'name': 'Franklin', 'image': ''},
-      {'name': 'Mega cavaleiro', 'image': ''},
-    ],
-    enrolledStudents: [
-      {'name': 'a', 'registration': '123456789', 'course': 'Medicina'},
-      {'name': 'b', 'registration': '', 'course': ''},
-      {'name': 'c', 'registration': '', 'course': ''},
-    ],
-  ),
-  EventData(
-    title: 'CodeRush 2026: Construa, Teste, Conquiste',
-    description:
-        'Um evento intenso pra quem quer evoluir de verdade. No CodeRush, você '
-        'vai ver na prática como construir projetos reais do zero até a entrega.',
-    location: 'Laboratório 2',
-    date: 'Amanhã',
-    time: '9:40',
-    remainingVacancies: 15,
-    isOpen: true,
-    speakers: [
-      {'name': 'Pedro', 'image': ''},
-    ],
-    enrolledStudents: [],
-  ),
-  EventData(
-    title: 'Saúde em Foco: Da Prevenção ao Cuidado Real',
-    description:
-        'Uma reunião voltado para quem quer entender como a saúde funciona na '
-        'prática, com foco em prevenção e acompanhamento contínuo.',
-    location: 'Sala 305',
-    date: '12/04',
-    time: '18:45',
-    remainingVacancies: 5,
-    isOpen: true,
-    speakers: [
-      {'name': 'Dra. Ana', 'image': ''},
-    ],
-    enrolledStudents: [],
-  ),
-];
-
-// ---------------------------------------------------------------------------
-// CONSTANTS
-// ---------------------------------------------------------------------------
-
-const Color kPrimaryBlue = Color(0xFF1535C9);
-
-// ---------------------------------------------------------------------------
 // HOME PAGE
-// ---------------------------------------------------------------------------
+// Conectada ao EventController — carrega eventos reais do Firestore.
+// Não depende de Provider: o controller é instanciado localmente e descartado
+// no dispose(), igual ao padrão adotado no create_page.dart.
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -101,58 +16,155 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedNavIndex = 0;
+  final _controller = EventController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_rebuild);
+    _controller.carregarEventos();
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_rebuild);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // Helpers de data
+
+  /// Retorna "Hoje", "Amanhã" ou "dd/MM" para exibir no card.
+  String _labelData(DateTime dt) {
+    final hoje = DateTime.now();
+    if (_mesmoDia(dt, hoje)) return 'Hoje';
+    if (_mesmoDia(dt, hoje.add(const Duration(days: 1)))) return 'Amanhã';
+    return '${dt.day.toString().padLeft(2, '0')}/'
+        '${dt.month.toString().padLeft(2, '0')}';
+  }
+
+  bool _mesmoDia(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  String _labelHora(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:'
+      '${dt.minute.toString().padLeft(2, '0')}';
+
+  // Build
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPrimaryBlue,
+      backgroundColor: const Color(0xFF1535C9),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 14),
               child: Text(
                 'Olá, Docente!',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ) ??
-                    const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            Expanded(
-              child: ListView.builder(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                itemCount: _placeholderEvents.length,
-                itemBuilder: (context, index) {
-                  final event = _placeholderEvents[index];
-                  return _EventListCard(
-                    event: event,
-                    onTap: () => _openEventModal(context, event),
-                  );
-                },
-              ),
-            ),
+            Expanded(child: _buildBody()),
           ],
         ),
       ),
-      // bottomNavigationBar: _BottomNavBar( selectedIndex: _selectedNavIndex, onTap: (i) => setState(() => _selectedNavIndex = i)),
     );
   }
 
-  void _openEventModal(BuildContext context, EventData event) {
+  Widget _buildBody() {
+    // Carregando
+    if (_controller.carregando && _controller.eventos.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    // Erro
+    if (_controller.erro != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white70, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              _controller.erro!,
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _controller.carregarEventos,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Lista vazia
+    if (_controller.eventos.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nenhum evento cadastrado.',
+          style: TextStyle(color: Colors.white70, fontSize: 15),
+        ),
+      );
+    }
+
+    // Lista de eventos
+    return RefreshIndicator(
+      onRefresh: _controller.carregarEventos,
+      color: const Color(0xFF1535C9),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        itemCount: _controller.eventos.length,
+        itemBuilder: (context, index) {
+          final evento = _controller.eventos[index];
+          return _EventListCard(
+            evento: evento,
+            labelData: _labelData(evento.dataInicio),
+            labelHora: _labelHora(evento.dataInicio),
+            onTap: () => _abrirModal(evento),
+          );
+        },
+      ),
+    );
+  }
+
+  void _abrirModal(EventModel evento) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _EventDetailsModal(event: event),
+      builder: (_) => _EventDetailsModal(
+        evento: evento,
+        controller: _controller,
+        onEditar: () => _abrirEdicao(evento),
+      ),
     );
+  }
+
+  Future<void> _abrirEdicao(EventModel evento) async {
+    final atualizado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => EditEventPage(evento: evento)),
+    );
+    if (atualizado == true) {
+      _controller.carregarEventos();
+    }
   }
 }
 
@@ -161,10 +173,17 @@ class _HomePageState extends State<HomePage> {
 // ---------------------------------------------------------------------------
 
 class _EventListCard extends StatelessWidget {
-  final EventData event;
+  final EventModel evento;
+  final String labelData;
+  final String labelHora;
   final VoidCallback onTap;
 
-  const _EventListCard({required this.event, required this.onTap});
+  const _EventListCard({
+    required this.evento,
+    required this.labelData,
+    required this.labelHora,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +200,7 @@ class _EventListCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // ── Date / Time box ──────────────────────────────────────────
+              // ── Caixa de data/hora ───────────────────────────────────────
               Container(
                 width: 82,
                 padding:
@@ -194,7 +213,7 @@ class _EventListCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      event.date,
+                      labelData,
                       style: const TextStyle(
                           fontSize: 13, color: Color(0xFF555555)),
                     ),
@@ -204,7 +223,7 @@ class _EventListCard extends StatelessWidget {
                           height: 1, thickness: 1, color: Color(0xFFAAAAAA)),
                     ),
                     Text(
-                      event.time,
+                      labelHora,
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -215,13 +234,13 @@ class _EventListCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // ── Title + Description ──────────────────────────────────────
+              // ── Título + descrição ───────────────────────────────────────
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      event.title,
+                      evento.titulo,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -230,7 +249,7 @@ class _EventListCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      event.description,
+                      evento.descricao,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -248,106 +267,19 @@ class _EventListCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// BOTTOM NAV BAR
-// ---------------------------------------------------------------------------
-
-class _BottomNavBar extends StatelessWidget {
-  final int selectedIndex;
-  final ValueChanged<int> onTap;
-
-  const _BottomNavBar({required this.selectedIndex, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: kPrimaryBlue,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.home_rounded,
-                label: 'Home',
-                selected: selectedIndex == 0,
-                onTap: () => onTap(0),
-              ),
-              _NavItem(
-                icon: Icons.add_circle_outline_rounded,
-                selected: selectedIndex == 1,
-                onTap: () => onTap(1),
-              ),
-              _NavItem(
-                icon: Icons.calendar_month_outlined,
-                selected: selectedIndex == 2,
-                onTap: () => onTap(2),
-              ),
-              _NavItem(
-                icon: Icons.person_outline_rounded,
-                selected: selectedIndex == 3,
-                onTap: () => onTap(3),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String? label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-    this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: selected
-            ? BoxDecoration(
-                color: Colors.white.withOpacity(0.18),
-                borderRadius: BorderRadius.circular(24),
-              )
-            : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 26),
-            if (label != null && selected) ...[
-              const SizedBox(width: 6),
-              Text(label!,
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// EVENT DETAILS MODAL (bottom sheet)
+// EVENT DETAILS MODAL
 // ---------------------------------------------------------------------------
 
 class _EventDetailsModal extends StatelessWidget {
-  final EventData event;
+  final EventModel evento;
+  final EventController controller;
+  final VoidCallback onEditar;
 
-  const _EventDetailsModal({required this.event});
+  const _EventDetailsModal({
+    required this.evento,
+    required this.controller,
+    required this.onEditar,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -375,7 +307,7 @@ class _EventDetailsModal extends StatelessWidget {
                   ),
                 ),
               ),
-              // ── Header row ───────────────────────────────────────────────
+              // ── Header ───────────────────────────────────────────────────
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
@@ -388,7 +320,7 @@ class _EventDetailsModal extends StatelessWidget {
                     ),
                     Expanded(
                       child: Text(
-                        event.title,
+                        evento.titulo,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
@@ -402,7 +334,7 @@ class _EventDetailsModal extends StatelessWidget {
                   ],
                 ),
               ),
-              // ── Scrollable body ──────────────────────────────────────────
+              // ── Conteúdo scrollável ──────────────────────────────────────
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -410,20 +342,21 @@ class _EventDetailsModal extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Status + vacancies
+                      // Status + vagas
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(children: [
                             const Text('Status: ',
-                                style:
-                                    TextStyle(fontWeight: FontWeight.w500)),
+                                style: TextStyle(fontWeight: FontWeight.w500)),
                             Text(
-                              event.isOpen ? 'Aberto' : 'Fechado',
+                              evento.status == EventStatus.cancelado
+                                  ? 'Cancelado'
+                                  : 'Aberto',
                               style: TextStyle(
-                                color: event.isOpen
-                                    ? Colors.green
-                                    : Colors.red,
+                                color: evento.status == EventStatus.cancelado
+                                    ? Colors.red
+                                    : Colors.green,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -431,7 +364,7 @@ class _EventDetailsModal extends StatelessWidget {
                           Row(children: [
                             const Text('Resta(m) '),
                             Text(
-                              '${event.remainingVacancies}',
+                              '${evento.vagasRestantes}',
                               style: const TextStyle(
                                   color: Colors.green,
                                   fontWeight: FontWeight.bold),
@@ -441,11 +374,12 @@ class _EventDetailsModal extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      // Description
-                      Text(event.description,
-                          style: const TextStyle(fontSize: 14, height: 1.55)),
+                      // Descrição
+                      Text(evento.descricao,
+                          style:
+                              const TextStyle(fontSize: 14, height: 1.55)),
                       const SizedBox(height: 14),
-                      // Location
+                      // Local
                       RichText(
                         text: TextSpan(
                           style: const TextStyle(
@@ -455,30 +389,30 @@ class _EventDetailsModal extends StatelessWidget {
                                 text: 'Local',
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold)),
-                            TextSpan(text: ': ${event.location}'),
+                            TextSpan(text: ': ${evento.local}'),
                           ],
                         ),
                       ),
                       const SizedBox(height: 22),
-                      // Ministrantes title
-                      const Center(
-                        child: Text(
-                          'Ministrantes',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                      // Ministrantes
+                      if (evento.ministrantes.isNotEmpty) ...[
+                        const Center(
+                          child: Text(
+                            'Ministrantes',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      // Speaker list
-                      ...event.speakers.map(
-                        (s) => _SpeakerTile(speaker: s),
-                      ),
+                        const SizedBox(height: 14),
+                        ...evento.ministrantes
+                            .map((m) => _SpeakerTile(ministrante: m)),
+                      ],
                       const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
-              // ── Action buttons ───────────────────────────────────────────
+              // ── Botões de ação ───────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                 child: Row(
@@ -487,7 +421,8 @@ class _EventDetailsModal extends StatelessWidget {
                       child: _PrimaryButton(
                         label: 'Editar evento',
                         onPressed: () {
-                          // TODO: navegar para tela de edição
+                          Navigator.pop(context);
+                          onEditar();
                         },
                       ),
                     ),
@@ -508,7 +443,7 @@ class _EventDetailsModal extends StatelessWidget {
     );
   }
 
-  // ── Dialogs ──────────────────────────────────────────────────────────────
+  // ── Diálogos ─────────────────────────────────────────────────────────────
 
   void _showDeleteDialog(BuildContext context) {
     showDialog(
@@ -520,10 +455,10 @@ class _EventDetailsModal extends StatelessWidget {
         confirmLabel: 'Deletar evento',
         cancelLabel: 'Cancelar',
         extraLinkText: 'Deseja cancelar o evento?',
-        onConfirm: () {
+        onConfirm: () async {
           Navigator.pop(context); // fecha dialog
           Navigator.pop(context); // fecha modal
-          // TODO: chamar repositório para deletar
+          await controller.deletarEvento(evento.id);
         },
         onCancel: () => Navigator.pop(context),
         onExtraLink: () {
@@ -543,9 +478,9 @@ class _EventDetailsModal extends StatelessWidget {
             'Tem certeza que deseja cancelar esse evento?\nVocê poderá reabri-lo a qualquer hora na aba Meus Eventos',
         confirmLabel: 'Cancelar evento',
         cancelLabel: 'Manter evento',
-        onConfirm: () {
+        onConfirm: () async {
           Navigator.pop(context);
-          // TODO: chamar repositório para cancelar
+          await controller.cancelarEvento(evento.id);
         },
         onCancel: () => Navigator.pop(context),
       ),
@@ -553,10 +488,11 @@ class _EventDetailsModal extends StatelessWidget {
   }
 
   void _showEnrolledList(BuildContext context) {
+    // TODO: buscar lista de inscritos do Firestore via repository
+    // Por enquanto exibe dialog placeholder
     showDialog(
       context: context,
-      builder: (_) =>
-          _EnrolledListDialog(students: event.enrolledStudents),
+      builder: (_) => const _EnrolledListDialog(students: []),
     );
   }
 }
@@ -566,13 +502,13 @@ class _EventDetailsModal extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _SpeakerTile extends StatelessWidget {
-  final Map<String, String> speaker;
+  final Map<String, String> ministrante;
 
-  const _SpeakerTile({required this.speaker});
+  const _SpeakerTile({required this.ministrante});
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = speaker['image'] ?? '';
+    final imageUrl = ministrante['imagem'] ?? '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -587,7 +523,7 @@ class _SpeakerTile extends StatelessWidget {
                 : null,
           ),
           const SizedBox(width: 16),
-          Text(speaker['name'] ?? '',
+          Text(ministrante['nome'] ?? '',
               style: const TextStyle(fontSize: 16)),
         ],
       ),
@@ -610,15 +546,16 @@ class _PrimaryButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: kPrimaryBlue,
+        backgroundColor: const Color(0xFF1535C9),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         elevation: 0,
       ),
       child: Text(label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          style:
+              const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
     );
   }
 }
@@ -651,7 +588,8 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -667,8 +605,8 @@ class _ConfirmDialog extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style:
-                  const TextStyle(fontSize: 14, color: Color(0xFF555555)),
+              style: const TextStyle(
+                  fontSize: 14, color: Color(0xFF555555)),
             ),
             if (extraLinkText != null) ...[
               const SizedBox(height: 8),
@@ -706,7 +644,7 @@ class _ConfirmDialog extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: onCancel,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryBlue,
+                      backgroundColor: const Color(0xFF1535C9),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -737,14 +675,14 @@ class _EnrolledListDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
               child: Row(
@@ -761,7 +699,6 @@ class _EnrolledListDialog extends StatelessWidget {
               ),
             ),
             const Divider(height: 1),
-            // Body
             Flexible(
               child: students.isEmpty
                   ? const Padding(
@@ -790,8 +727,7 @@ class _EnrolledListDialog extends StatelessWidget {
                                   style: TextStyle(fontSize: 14)),
                               Expanded(
                                 child: Text(parts.join(' | '),
-                                    style:
-                                        const TextStyle(fontSize: 14)),
+                                    style: const TextStyle(fontSize: 14)),
                               ),
                             ],
                           ),

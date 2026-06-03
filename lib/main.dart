@@ -13,7 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'routes/app_router.dart';
-import 'routes/app_routes.dart';
+//import 'routes/app_routes.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,14 +35,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      initialRoute: AppRoutes.login,
+      //initialRoute: AppRoutes.login,
       onGenerateRoute: AppRouter.generateRoute,
       theme: ThemeData(
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          headlineMedium: TextStyle(fontSize: 17),
-          titleLarge: TextStyle(fontSize: 24),
-          labelLarge: TextStyle(fontSize: 12),
+        textTheme: GoogleFonts.poppinsTextTheme(
+          //displayLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          //headlineMedium: TextStyle(fontSize: 17),
+          //titleLarge: TextStyle(fontSize: 24),
+          //labelLarge: TextStyle(fontSize: 12),
         ),
       ),
     );

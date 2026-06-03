@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../components/buttons/primary_button.dart';
-import '../../components/inputs/app_text_field.dart';
 import '../../crudEvent/event_controller.dart';
+import '../../crudEvent/event_model.dart';
 
 const _cursos = [
   'Ciência da Computação',
@@ -32,32 +32,53 @@ const _periodos = [
   'Todos os períodos',
 ];
 
-class CreatePage extends StatefulWidget {
-  const CreatePage({super.key});
+class EditEventPage extends StatefulWidget {
+  final EventModel evento;
+
+  const EditEventPage({super.key, required this.evento});
 
   @override
-  State<CreatePage> createState() => _CreatePageState();
+  State<EditEventPage> createState() => _EditEventPageState();
 }
 
-class _CreatePageState extends State<CreatePage> {
+class _EditEventPageState extends State<EditEventPage> {
   final _controller = EventController();
 
-  final _tituloCtrl = TextEditingController();
-  final _diaCtrl = TextEditingController();
-  final _horaCtrl = TextEditingController();
-  final _localCtrl = TextEditingController();
-  final _vagasCtrl = TextEditingController();
-  final _descricaoCtrl = TextEditingController();
-  final _ministranteCtrl = TextEditingController();
+  late final TextEditingController _tituloCtrl;
+  late final TextEditingController _diaCtrl;
+  late final TextEditingController _horaCtrl;
+  late final TextEditingController _localCtrl;
+  late final TextEditingController _vagasCtrl;
+  late final TextEditingController _descricaoCtrl;
+  final TextEditingController _ministranteCtrl = TextEditingController();
 
   String? _cursoSelecionado;
   String? _periodoSelecionado;
-  final List<String> _ministrantes = [];
+  late List<String> _ministrantes;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_atualizarTela);
+
+    final e = widget.evento;
+    _tituloCtrl = TextEditingController(text: e.titulo);
+    _diaCtrl = TextEditingController(
+      text: '${e.dataInicio.day.toString().padLeft(2, '0')}/'
+          '${e.dataInicio.month.toString().padLeft(2, '0')}/'
+          '${e.dataInicio.year}',
+    );
+    _horaCtrl = TextEditingController(
+      text: '${e.dataInicio.hour.toString().padLeft(2, '0')}:'
+          '${e.dataInicio.minute.toString().padLeft(2, '0')}',
+    );
+    _localCtrl = TextEditingController(text: e.local);
+    _vagasCtrl = TextEditingController(text: e.vagasTotal.toString());
+    _descricaoCtrl = TextEditingController(text: e.descricao);
+
+    _cursoSelecionado = _cursos.contains(e.curso) ? e.curso : null;
+    _periodoSelecionado = _periodos.contains(e.periodo) ? e.periodo : null;
+    _ministrantes = e.ministrantes.map((m) => m['nome'] ?? '').where((n) => n.isNotEmpty).toList();
   }
 
   void _atualizarTela() {
@@ -81,8 +102,8 @@ class _CreatePageState extends State<CreatePage> {
   Future<void> _selecionarDia() async {
     final data = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: widget.evento.dataInicio,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 730)),
     );
     if (data != null) {
@@ -96,7 +117,7 @@ class _CreatePageState extends State<CreatePage> {
   Future<void> _selecionarHora() async {
     final hora = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: TimeOfDay.fromDateTime(widget.evento.dataInicio),
     );
     if (hora != null) {
       _horaCtrl.text =
@@ -118,7 +139,7 @@ class _CreatePageState extends State<CreatePage> {
     setState(() => _ministrantes.removeAt(index));
   }
 
-  Future<void> _publicar() async {
+  Future<void> _salvar() async {
     if (_tituloCtrl.text.trim().isEmpty ||
         _diaCtrl.text.trim().isEmpty ||
         _horaCtrl.text.trim().isEmpty ||
@@ -158,7 +179,7 @@ class _CreatePageState extends State<CreatePage> {
       int.parse(partesHora[1]),
     );
 
-    final ok = await _controller.criarEvento(
+    final eventoAtualizado = widget.evento.copyWith(
       titulo: _tituloCtrl.text.trim(),
       descricao: _descricaoCtrl.text.trim(),
       dataInicio: dataInicio,
@@ -170,27 +191,15 @@ class _CreatePageState extends State<CreatePage> {
       ministrantes: _ministrantes.map((n) => {'nome': n}).toList(),
     );
 
+    final ok = await _controller.editarEvento(eventoAtualizado);
+
     if (!mounted) return;
 
     if (ok) {
-      _tituloCtrl.clear();
-      _diaCtrl.clear();
-      _horaCtrl.clear();
-      _localCtrl.clear();
-      _vagasCtrl.clear();
-      _descricaoCtrl.clear();
-      _ministranteCtrl.clear();
-      setState(() {
-        _cursoSelecionado = null;
-        _periodoSelecionado = null;
-        _ministrantes.clear();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Evento publicado com sucesso!')),
-      );
+      Navigator.of(context).pop(true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_controller.erro ?? 'Erro ao publicar evento.')),
+        SnackBar(content: Text(_controller.erro ?? 'Erro ao salvar evento.')),
       );
     }
   }
@@ -212,18 +221,35 @@ class _CreatePageState extends State<CreatePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Center(
-                  child: Text(
-                    'Criar evento',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+                      onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                  ),
+                    const Expanded(
+                      child: Center(
+                        child: Text(
+                          'Editar evento',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 30),
+                  ],
                 ),
                 const SizedBox(height: 24),
-                AppTextField(hint: 'Título', controller: _tituloCtrl),
+                _CampoComIcone(
+                  hint: 'Título',
+                  controller: _tituloCtrl,
+                  readOnly: false,
+                ),
                 const SizedBox(height: 14),
                 _CampoComIcone(
                   hint: 'Dia',
@@ -239,7 +265,11 @@ class _CreatePageState extends State<CreatePage> {
                   onIconTap: _selecionarHora,
                 ),
                 const SizedBox(height: 14),
-                AppTextField(hint: 'Local', controller: _localCtrl),
+                _CampoComIcone(
+                  hint: 'Local',
+                  controller: _localCtrl,
+                  readOnly: false,
+                ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: _vagasCtrl,
@@ -277,9 +307,9 @@ class _CreatePageState extends State<CreatePage> {
                 ),
                 const SizedBox(height: 28),
                 PrimaryButton(
-                  text: 'Publicar',
+                  text: 'Próximo →',
                   loading: _controller.carregando,
-                  onPressed: _publicar,
+                  onPressed: _salvar,
                 ),
               ],
             ),
@@ -316,21 +346,23 @@ class _CreatePageState extends State<CreatePage> {
 class _CampoComIcone extends StatelessWidget {
   final String hint;
   final TextEditingController controller;
-  final IconData icon;
-  final VoidCallback onIconTap;
+  final IconData? icon;
+  final VoidCallback? onIconTap;
+  final bool readOnly;
 
   const _CampoComIcone({
     required this.hint,
     required this.controller,
-    required this.icon,
-    required this.onIconTap,
+    this.icon,
+    this.onIconTap,
+    this.readOnly = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      readOnly: true,
+      readOnly: readOnly,
       onTap: onIconTap,
       decoration: InputDecoration(
         hintText: hint,
@@ -349,10 +381,12 @@ class _CampoComIcone extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF3B5EDF)),
         ),
-        suffixIcon: IconButton(
-          icon: Icon(icon, color: Colors.black45),
-          onPressed: onIconTap,
-        ),
+        suffixIcon: icon != null
+            ? IconButton(
+                icon: Icon(icon, color: Colors.black45),
+                onPressed: onIconTap,
+              )
+            : null,
       ),
     );
   }
