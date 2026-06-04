@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'institutional_db.dart';
 import 'user.dart';
 
@@ -11,6 +14,51 @@ import 'user.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static const Duration _requestTimeout = Duration(seconds: 25);
+
+  Future<AppUser?> buscarUsuarioAtual() async {
+    final firebaseUser = _auth.currentUser;
+
+    if (firebaseUser == null) return null;
+
+    final doc = await _db.collection('usuarios').doc(firebaseUser.uid).get();
+
+    if (doc.exists && doc.data() != null) {
+      return AppUser.fromMap(doc.id, doc.data()!);
+    }
+
+    return AppUser(
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName ?? '',
+      email: firebaseUser.email ?? '',
+      matricula: '',
+      role: '',
+    );
+  }
+
+  Future<void> atualizarPerfil({required String name}) async {
+    final firebaseUser = _auth.currentUser;
+    final trimmedName = name.trim();
+
+    if (firebaseUser == null) {
+      throw Exception('Usuário não autenticado.');
+    }
+
+    if (trimmedName.isEmpty) {
+      throw Exception('Informe um nome válido.');
+    }
+
+    await _db
+        .collection('usuarios')
+        .doc(firebaseUser.uid)
+        .set({
+          'name': trimmedName,
+          'email': firebaseUser.email ?? '',
+        }, SetOptions(merge: true))
+        .timeout(_requestTimeout);
+
+    await firebaseUser.updateDisplayName(trimmedName).timeout(_requestTimeout);
+  }
 
   Future<void> cadastrarUsuario({
     required String matricula,

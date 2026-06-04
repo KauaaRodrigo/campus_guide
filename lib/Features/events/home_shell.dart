@@ -4,7 +4,7 @@ import '../../Components/navigation/bottom_nav_bar.dart';
 import 'home.dart';
 import 'create_page.dart';
 import 'my_events_page.dart';
-import 'package:campus_guide/Features/profile/profile_tab.dart';
+import 'package:campus_guide/Features/profile/profile_page.dart';
 
 /// Container que mantém as principais abas e a `AppBottomNavBar`.
 class HomeShell extends StatefulWidget {
@@ -23,7 +23,7 @@ class _HomeShellState extends State<HomeShell> {
       const HomePage(),
       const CreatePage(),
       const MyEventsPage(),
-      const ProfileTab(),
+      const ProfilePage(showBottomNavigationBar: false),
     ];
 
     return Scaffold(
