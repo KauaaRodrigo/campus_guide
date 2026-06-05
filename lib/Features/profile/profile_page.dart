@@ -18,7 +18,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  static const String _profileImageAsset = 'imagens/icone_perfil.png';
+  static const String _profileImageAsset = 'imagens/icone_perfil_novo.png';
 
   final AuthService _authService = AuthService();
 

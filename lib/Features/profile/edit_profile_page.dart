@@ -18,7 +18,7 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  static const String _profileImageAsset = 'imagens/Icone_perfil.png';
+  static const String _profileImageAsset = 'imagens/icone_perfil_novo.png';
 
   final AuthService _authService = AuthService();
   final TextEditingController nameController = TextEditingController();
