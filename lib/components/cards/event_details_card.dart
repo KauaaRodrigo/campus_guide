@@ -117,10 +117,10 @@ class EventDetailsCard extends StatelessWidget {
 
           Column(
             children: speakers.map((speaker) {
-              return UserListItem(
-                name: speaker["name"]!,
-                image: speaker["image"]!,
-              );
+              final name = speaker["name"] ?? speaker["nome"] ?? "";
+              final image = speaker["image"] ?? speaker["imagem"] ?? "";
+
+              return UserListItem(name: name, image: image);
             }).toList(),
           ),
         ],

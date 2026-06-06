@@ -45,7 +45,7 @@ class InstitutionalDB {
     ),
     '1234827211': _InstitutionalRecord(
       matricula: '1234827211',
-      email: 'davireis909@gmail.com',
+      email: 'davi.guimaraes@souunit.com.br',
       name: 'Davi Reis',
       role: 'aluno',
     ),
