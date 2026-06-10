@@ -41,6 +41,7 @@ dependencies:
   http: ^1.2.0
   google_sign_in: ^6.3.0
   sign_in_button: ^5.0.0
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:
