@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'event_model.dart';
 
 class EventRepository {
@@ -9,6 +8,18 @@ class EventRepository {
 
   Future<List<EventModel>> buscarTodos() async {
     final snapshot = await _col.orderBy('dataInicio').get();
+    final eventosVisiveis = <EventModel>[];
+    
+    for (final doc in snapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      // Filtra eventos ocultados automaticamente após a janela de 4 dias
+      if (data['isOcultoSistema'] == true) continue;
+      
+      final evento = EventModel.fromDoc(doc);
+      if (evento.isVisivelNaListagem) {
+        eventosVisiveis.add(evento);
+      }
+    }
     final eventos = snapshot.docs.map((doc) => EventModel.fromDoc(doc)).toList();
     final eventosVisiveis = eventos.where((evento) => evento.isVisivelNaListagem).toList();
     return _ordenarEventos(eventosVisiveis);
@@ -26,6 +37,18 @@ class EventRepository {
         .snapshots()
         .map(
           (snapshot) {
+            final eventosVisiveis = <EventModel>[];
+            
+            for (final doc in snapshot.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              if (data['isOcultoSistema'] == true) continue;
+              
+              final evento = EventModel.fromDoc(doc);
+              if (evento.isVisivelNaListagem) {
+                eventosVisiveis.add(evento);
+              }
+            }
+            return _ordenarEventos(eventosVisiveis);
             final eventos = snapshot.docs.map((doc) => EventModel.fromDoc(doc)).toList();
             final eventosVisiveis = eventos.where((evento) => evento.isVisivelNaListagem).toList();
             return _ordenarEventos(eventosVisiveis); // eventos ordenados pela data e hora
@@ -49,6 +72,8 @@ class EventRepository {
     });
   }
 
+  /// REGRA: Eventos cancelados devem permanecer visíveis por 4 dias e depois receber uma flag oculta.
+  /// O status "Cancelado" não é modificado.
   /// Atualiza eventos cancelados que ultrapassaram 4 dias para o status ocultado.
   Future<void> atualizarEventosOcultados() async {
     final snapshot = await _col.where('status', isEqualTo: EventStatus.cancelado.name).get();
@@ -56,6 +81,9 @@ class EventRepository {
 
     for (final doc in snapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
+      if (data['isOcultoSistema'] == true) continue;
+
+      final dataCancelamentoTimestamp = data['dataCancelamento'] as Timestamp?;
       final dataCancelamentoTimestamp = data ['dataCancelamento'] as Timestamp?;
 
       if (dataCancelamentoTimestamp != null) {
@@ -64,6 +92,7 @@ class EventRepository {
 
         if (agora.isAfter(limiteVisibilidade)) {
           await _col.doc(doc.id).update({
+            'isOcultoSistema': true,
             'status': EventStatus.ocultado.name,
             'atualizadoEm': Timestamp.fromDate(agora),
           });

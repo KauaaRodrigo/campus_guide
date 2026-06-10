@@ -19,7 +19,7 @@ class EnrollmentRepository {
     final inscricaoRef = _col.doc(_docId(userID, eventoID));
     final eventoRef = _db.collection('eventos').doc(eventoID);
 
-    // O runTransaction garante a consistência e resolve os acessos simultâneos
+    // runTransaction garante a consistência e resolve concorrência de acessos simultâneos
     await _db.runTransaction((transaction) async {
       final inscricaoDoc = await transaction.get(inscricaoRef);
       
@@ -39,6 +39,9 @@ class EnrollmentRepository {
       final vagasOcupadas = data['vagasOcupadas'] ?? 0;
       final Timestamp? dataInicioTimestamp = data['dataInicio'];
 
+      // REGRA: Evento deve estar com status “Aberto” para permitir inscrição
+      if (status != EventStatus.ativo.name) {
+        throw Exception('Este evento não está aberto para inscrições.');
       if (status == EventStatus.cancelado.name) {
         throw Exception('Este evento está cancelado.');
       }
@@ -60,13 +63,14 @@ class EnrollmentRepository {
         }
       }
 
-      // Se passou em todas as regras, consolida a inscrição
+      // Salva a inscrição
       transaction.set(inscricaoRef, {
         'userID': userID,
         'eventoID': eventoID,
         'criadoEm': FieldValue.serverTimestamp(),
       });
       
+      // Incrementa a vaga ocupada de forma atômica
       transaction.update(eventoRef, {
         'vagasOcupadas': vagasOcupadas + 1,
         'atualizadoEm': Timestamp.fromDate(DateTime.now()),
@@ -83,15 +87,36 @@ class EnrollmentRepository {
 
     await _db.runTransaction((transaction) async {
       final inscricaoDoc = await transaction.get(inscricaoRef);
-      if (!inscricaoDoc.exists) return;
+      if (!inscricaoDoc.exists) {
+        throw Exception('Inscrição não encontrada.');
+      }
 
       final eventoDoc = await transaction.get(eventoRef);
+      
+      // REGRA: Cancelamentos da inscrição só podem ocorrer até 10 min antes do começo do evento
+      if (eventoDoc.exists) {
+        final data = eventoDoc.data() as Map<String, dynamic>;
+        final Timestamp? dataInicioTimestamp = data['dataInicio'];
+        
+        if (dataInicioTimestamp != null) {
+          final dataInicio = dataInicioTimestamp.toDate();
+          final dataLimiteCancelamento = dataInicio.subtract(const Duration(minutes: 10));
+          
+          if (DateTime.now().isAfter(dataLimiteCancelamento)) {
+            throw Exception(
+              'Cancelamento bloqueado. O prazo finalizou 10 minutos antes do início do evento.'
+            );
+          }
+        }
+      }
+
       final vagasOcupadas = eventoDoc.exists
           ? ((eventoDoc.data() as Map<String, dynamic>)['vagasOcupadas'] ?? 0)
           : 0;
 
       transaction.delete(inscricaoRef);
       if (eventoDoc.exists) {
+        // REGRA: Cancelamentos abrem vagas para novos usuários
         transaction.update(eventoRef, {
           'vagasOcupadas': vagasOcupadas > 0 ? vagasOcupadas - 1 : 0,
           'atualizadoEm': Timestamp.fromDate(DateTime.now()),

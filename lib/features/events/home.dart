@@ -577,17 +577,38 @@ class _EventDetailsModal extends StatelessWidget {
   void _showCancelDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => _ConfirmDialog(
+      builder: (dialogContext) => _ConfirmDialog(
         title: 'Cancelar evento',
         message:
-            'Tem certeza que deseja cancelar esse evento?\nVocê poderá reabri-lo a qualquer hora na aba Meus Eventos',
+            'Tem certeza que deseja cancelar esse evento?\nOs alunos inscritos serão notificados via e-mail.',
         confirmLabel: 'Cancelar evento',
         cancelLabel: 'Manter evento',
         onConfirm: () async {
-          Navigator.pop(context);
-          await controller.cancelarEvento(evento.id);
+          // 1. Fecha apenas o popup de confirmação (o pequeno com os 2 botões)
+          Navigator.pop(dialogContext); 
+          
+          // 2. Aciona o controller para cancelar no banco
+          final sucesso = await controller.cancelarEvento(evento.id);
+          
+          if (!context.mounted) return;
+          
+          if (sucesso) {
+            // 3. Fecha o modal de detalhes do evento (Bottom Sheet)
+            Navigator.pop(context); 
+            
+            // 4. Mostra o Popup de sucesso de cancelamento
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => const _CancelamentoConfirmadoDialog(),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(controller.erro ?? 'Erro ao cancelar evento.')),
+            );
+          }
         },
-        onCancel: () => Navigator.pop(context),
+        onCancel: () => Navigator.pop(dialogContext),
       ),
     );
   }
@@ -914,19 +935,16 @@ class _InscricaoConfirmadaDialog extends StatelessWidget {
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+      // Apenas a largura fica restrita, a altura será dinâmica baseada no conteúdo!
       child: SizedBox(
-        width: 350,
-        height: 290,
+        width: 350, 
         child: Padding(
           padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min, // Força a coluna a encolher para o tamanho dos itens
             children: [
-              // Checkmark simples, sem círculo colorido
               const Icon(Icons.check, size: 48, color: Colors.black87),
               const SizedBox(height: 16),
-
-              // Título
               const Text(
                 'Você está inscrito!',
                 style: TextStyle(
@@ -937,8 +955,6 @@ class _InscricaoConfirmadaDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
-
-              // Subtítulo
               const Text(
                 'Enviamos uma confirmação de inscrição para seu email.',
                 style: TextStyle(
@@ -949,8 +965,73 @@ class _InscricaoConfirmadaDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1535C9),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text(
+                    'Continuar',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-              // Botão Continuar
+/// Popup de confirmação exibido após o organizador cancelar o evento.
+class _CancelamentoConfirmadoDialog extends StatelessWidget {
+  const _CancelamentoConfirmadoDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+      child: SizedBox(
+        width: 350,
+        // Height de 290 removido daqui também!
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check, size: 48, color: Colors.black87),
+              const SizedBox(height: 16),
+              const Text(
+                'Evento Cancelado!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'O evento foi marcado como cancelado e os alunos inscritos foram notificados por email.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
                 height: 50,
