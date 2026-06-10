@@ -992,7 +992,7 @@ class _InscricaoConfirmadaDialog extends StatelessWidget {
   }
 }
 
-/// Popup de confirmação exibido após o organizador cancelar o evento.
+// Pop up de evento cancelado
 class _CancelamentoConfirmadoDialog extends StatelessWidget {
   const _CancelamentoConfirmadoDialog();
 

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum EventStatus { ativo, encerrado, cancelado, ocultado } 
+enum EventStatus { ativo, encerrado, cancelado, ocultado }
 
 class EventModel {
   final String id;
@@ -11,6 +11,7 @@ class EventModel {
   final String local;
   final int vagasTotal;
   final int vagasOcupadas;
+
   /// Lista de cursos para os quais o evento é destinado.
   final List<String> cursos;
 
@@ -51,7 +52,6 @@ class EventModel {
   /// de Cloud Functions ou qualquer job de atualização de status.
   int get vagasRestantes => vagasTotal - vagasOcupadas;
 
- 
   EventStatus get statusEfetivo {
     if (status == EventStatus.cancelado) return status;
     if (status == EventStatus.ocultado) return status;
@@ -61,26 +61,17 @@ class EventModel {
         : EventStatus.ativo;
   }
 
-  bool get estaAberto => statusEfetivo == EventStatus.ativo && vagasRestantes > 0;
+  bool get estaAberto =>
+      statusEfetivo == EventStatus.ativo && vagasRestantes > 0;
 
- 
   bool get isOculto {
-    final agora = DateTime.now();
-    // Evento ainda dentro do período de realização: sempre visível.
+    // Se está ativo, fica visível (a menos que a data já tenha passado, o que cai no encerrado)
     if (statusEfetivo == EventStatus.ativo) return false;
 
-    // Eventos encerrados já passaram e não devem ser exibidos.
+    // Se foi encerrado, ocultado, ou se sobrou algum "cancelado" legado no banco, esconde tudo.
     if (statusEfetivo == EventStatus.encerrado) return true;
-
-    // Cancelado: visível por 4 dias a partir de dataCancelamento.
-    if (status == EventStatus.cancelado) {
-      if (dataCancelamento == null) return false;
-      final limiteVisibilidade = dataCancelamento!.add(const Duration(days: 4));
-      return agora.isAfter(limiteVisibilidade);
-    }
-
-    // Ocultado: sempre oculto.
     if (statusEfetivo == EventStatus.ocultado) return true;
+    if (status == EventStatus.cancelado) return true;
 
     return false;
   }
@@ -143,8 +134,9 @@ class EventModel {
       criadoPor: data['criadoPor'] ?? '',
       criadoEm: (data['criadoEm'] as Timestamp).toDate(),
       atualizadoEm: (data['atualizadoEm'] as Timestamp).toDate(),
-      dataCancelamento:
-          dataCancelamentoTimestamp != null ? dataCancelamentoTimestamp.toDate() : null,
+      dataCancelamento: dataCancelamentoTimestamp != null
+          ? dataCancelamentoTimestamp.toDate()
+          : null,
     );
   }
 
