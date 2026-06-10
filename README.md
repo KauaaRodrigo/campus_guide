@@ -50,7 +50,7 @@ Sprint 3 - (27/05 - 03/06)
 
 - José Alves 
 
-- Luiz Armando 
+- Luiz Armando| Tela Home Docente e Regras de Negocios de eventos ocutados e cancelados | https://drive.google.com/file/d/1PTT25khMEN8mmHl1qxomE0GdQ_R-CwSp/view?usp=sharing
 
 - Davi Reis | Perfil e Editar Perfil | https://drive.google.com/file/d/17pOSvneUC70ukvUlGGAfHy4FT76heTzW/view?usp=sharing
  
