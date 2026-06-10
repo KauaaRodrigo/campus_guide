@@ -48,7 +48,7 @@ Sprint 3 - (27/05 - 03/06)
 
 - Luís Gustavo | Sistema de Login com Google, Configuração de permissões e Ajuste da Nav Bar | https://drive.google.com/file/d/1i7LiV8reu5pkQ8TcbC1Gpx1r6MZOCm4c/view?usp=drivesdk
 
-- José Alves 
+- José Alves | Sitema de login, cadastro e recuperação | https://drive.google.com/file/d/1TccY_pJ2vI86IpIWTYUHhZ6rR2fDsuWV/view?usp=sharing
 
 - Luiz Armando| Tela Home Docente e Regras de Negocios de eventos ocutados e cancelados | https://drive.google.com/file/d/1PTT25khMEN8mmHl1qxomE0GdQ_R-CwSp/view?usp=sharing
 
