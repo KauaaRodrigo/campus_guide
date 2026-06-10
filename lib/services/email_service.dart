@@ -7,7 +7,7 @@ import 'package:campus_guide/features/auth/user.dart';
 class EmailService {
   static const String _serviceId = 'campus_guide';
   static const String _templateId = 'template_lqsep6t';
-  static const String _templateCancelamentoId = 'template_cancelamento';
+  static const String _templateCancelamentoId = 'template_c9d1cgz';
   static const String _publicKey = 'OcdXVe1cna0TpVXcf';
 
   static const String _endpoint =
