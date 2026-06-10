@@ -63,7 +63,7 @@ class InstitutionalDB {
     ),
     '1231110624': _InstitutionalRecord(
       matricula: '1231110624',
-      email: 'luiz.armando@unit.com.br',
+      email: 'luiz.armando@souunit.com.br',
       name: 'Luiz Armando',
       role: 'docente',
     ),

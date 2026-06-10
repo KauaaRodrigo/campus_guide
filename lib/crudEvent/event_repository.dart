@@ -20,6 +20,8 @@ class EventRepository {
         eventosVisiveis.add(evento);
       }
     }
+    final eventos = snapshot.docs.map((doc) => EventModel.fromDoc(doc)).toList();
+    final eventosVisiveis = eventos.where((evento) => evento.isVisivelNaListagem).toList();
     return _ordenarEventos(eventosVisiveis);
   }
 
@@ -47,6 +49,9 @@ class EventRepository {
               }
             }
             return _ordenarEventos(eventosVisiveis);
+            final eventos = snapshot.docs.map((doc) => EventModel.fromDoc(doc)).toList();
+            final eventosVisiveis = eventos.where((evento) => evento.isVisivelNaListagem).toList();
+            return _ordenarEventos(eventosVisiveis); // eventos ordenados pela data e hora
           },
         );
   }
@@ -69,6 +74,7 @@ class EventRepository {
 
   /// REGRA: Eventos cancelados devem permanecer visíveis por 4 dias e depois receber uma flag oculta.
   /// O status "Cancelado" não é modificado.
+  /// Atualiza eventos cancelados que ultrapassaram 4 dias para o status ocultado.
   Future<void> atualizarEventosOcultados() async {
     final snapshot = await _col.where('status', isEqualTo: EventStatus.cancelado.name).get();
     final agora = DateTime.now();
@@ -78,6 +84,7 @@ class EventRepository {
       if (data['isOcultoSistema'] == true) continue;
 
       final dataCancelamentoTimestamp = data['dataCancelamento'] as Timestamp?;
+      final dataCancelamentoTimestamp = data ['dataCancelamento'] as Timestamp?;
 
       if (dataCancelamentoTimestamp != null) {
         final dataCancelamento = dataCancelamentoTimestamp.toDate();
@@ -86,6 +93,7 @@ class EventRepository {
         if (agora.isAfter(limiteVisibilidade)) {
           await _col.doc(doc.id).update({
             'isOcultoSistema': true,
+            'status': EventStatus.ocultado.name,
             'atualizadoEm': Timestamp.fromDate(agora),
           });
         }
@@ -93,6 +101,7 @@ class EventRepository {
     }
   }
 
+  //ordenados pela data e hora do evento
   List<EventModel> _ordenarEventos(List<EventModel> eventos) {
     final hoje = DateTime.now();
     final amanha = hoje.add(const Duration(days: 1));

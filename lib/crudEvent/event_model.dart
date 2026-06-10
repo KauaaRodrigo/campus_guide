@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum EventStatus { ativo, encerrado, cancelado }
+enum EventStatus { ativo, encerrado, cancelado, ocultado } 
 
 class EventModel {
   final String id;
@@ -22,6 +22,7 @@ class EventModel {
   final String criadoPor;
   final DateTime criadoEm;
   final DateTime atualizadoEm;
+  final DateTime? dataCancelamento;
 
   const EventModel({
     required this.id,
@@ -39,9 +40,8 @@ class EventModel {
     this.criadoPor = '',
     required this.criadoEm,
     required this.atualizadoEm,
+    this.dataCancelamento,
   });
-
-  int get vagasRestantes => vagasTotal - vagasOcupadas;
 
   /// Status efetivo calculado em tempo real, sem depender de escrita no Firestore.
   ///
@@ -49,7 +49,12 @@ class EventModel {
   /// é tratado automaticamente como [EventStatus.encerrado] para toda lógica
   /// de negócio (exibição, inscrição, visibilidade).  Isso elimina a necessidade
   /// de Cloud Functions ou qualquer job de atualização de status.
+  int get vagasRestantes => vagasTotal - vagasOcupadas;
+
+ 
   EventStatus get statusEfetivo {
+    if (status == EventStatus.cancelado) return status;
+    if (status == EventStatus.ocultado) return status;
     if (status != EventStatus.ativo) return status;
     return DateTime.now().isAfter(dataFim)
         ? EventStatus.encerrado
@@ -58,27 +63,36 @@ class EventModel {
 
   bool get estaAberto => statusEfetivo == EventStatus.ativo && vagasRestantes > 0;
 
-  /// Retorna true se o evento deve ser oculto da listagem pública.
-  ///
-  /// Regra: eventos encerrados ou cancelados desaparecem da listagem
-  /// pública após 4 dias da [dataFim].  O cálculo é puramente baseado
-  /// em data — não requer nenhuma alteração de campo no Firestore.
+ 
   bool get isOculto {
     final agora = DateTime.now();
     // Evento ainda dentro do período de realização: sempre visível.
     if (statusEfetivo == EventStatus.ativo) return false;
-    // Encerrado ou cancelado: janela de carência de 4 dias após o término.
-    final limiteVisibilidade = dataFim.add(const Duration(days: 4));
-    return agora.isAfter(limiteVisibilidade);
+
+    // Eventos encerrados já passaram e não devem ser exibidos.
+    if (statusEfetivo == EventStatus.encerrado) return true;
+
+    // Cancelado: visível por 4 dias a partir de dataCancelamento.
+    if (status == EventStatus.cancelado) {
+      if (dataCancelamento == null) return false;
+      final limiteVisibilidade = dataCancelamento!.add(const Duration(days: 4));
+      return agora.isAfter(limiteVisibilidade);
+    }
+
+    // Ocultado: sempre oculto.
+    if (statusEfetivo == EventStatus.ocultado) return true;
+
+    return false;
   }
 
   /// Retorna true se o evento deve aparecer na listagem pública.
   bool get isVisivelNaListagem => !isOculto;
 
   String get statusTexto {
-    if (statusEfetivo == EventStatus.cancelado) return 'Cancelado';
+    if (status == EventStatus.cancelado) return 'Cancelado';
+    if (statusEfetivo == EventStatus.ocultado) return 'Ocultado';
     if (statusEfetivo == EventStatus.encerrado) return 'Encerrado';
-    if (vagasRestantes <= 0) return 'Esgotado';
+    if (vagasRestantes <= 0) return 'Fechado';
     return 'Disponível ($vagasRestantes vagas)';
   }
 
@@ -98,11 +112,15 @@ class EventModel {
       'criadoPor': criadoPor,
       'criadoEm': Timestamp.fromDate(criadoEm),
       'atualizadoEm': Timestamp.fromDate(atualizadoEm),
+      'dataCancelamento': dataCancelamento != null
+          ? Timestamp.fromDate(dataCancelamento!)
+          : null,
     };
   }
 
   factory EventModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final dataCancelamentoTimestamp = data['dataCancelamento'] as Timestamp?;
 
     return EventModel(
       id: doc.id,
@@ -125,6 +143,8 @@ class EventModel {
       criadoPor: data['criadoPor'] ?? '',
       criadoEm: (data['criadoEm'] as Timestamp).toDate(),
       atualizadoEm: (data['atualizadoEm'] as Timestamp).toDate(),
+      dataCancelamento:
+          dataCancelamentoTimestamp != null ? dataCancelamentoTimestamp.toDate() : null,
     );
   }
 
@@ -149,6 +169,7 @@ class EventModel {
     List<Map<String, String>>? ministrantes,
     EventStatus? status,
     String? criadoPor,
+    DateTime? dataCancelamento,
   }) {
     return EventModel(
       id: id,
@@ -166,6 +187,7 @@ class EventModel {
       criadoPor: criadoPor ?? this.criadoPor,
       criadoEm: criadoEm,
       atualizadoEm: DateTime.now(),
+      dataCancelamento: dataCancelamento ?? this.dataCancelamento,
     );
   }
 }

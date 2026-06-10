@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:campus_guide/features/auth/user.dart';
+
 import 'event_model.dart';
 
 class EnrollmentRepository {
@@ -39,6 +42,8 @@ class EnrollmentRepository {
       // REGRA: Evento deve estar com status “Aberto” para permitir inscrição
       if (status != EventStatus.ativo.name) {
         throw Exception('Este evento não está aberto para inscrições.');
+      if (status == EventStatus.cancelado.name) {
+        throw Exception('Este evento está cancelado.');
       }
 
       // REGRA: Devem existir vagas remanescentes
@@ -135,6 +140,30 @@ class EnrollmentRepository {
         .toList();
   }
 
+  Future<List<AppUser>> buscarUsuariosInscritosDoEvento( //avisa os inscritos no email
+    String eventoID,
+  ) async {
+    final snapshot = await _col.where('eventoID', isEqualTo: eventoID).get();
+    final usuarios = <AppUser>[];
+
+    for (final doc in snapshot.docs) {
+      final userID = doc.data()['userID'] as String?;
+      if (userID == null || userID.isEmpty) continue;
+
+      final userDoc = await _db.collection('usuarios').doc(userID).get();
+      if (!userDoc.exists) continue;
+
+      final userData = userDoc.data();
+      if (userData == null) continue;
+
+      usuarios.add(AppUser.fromMap(userDoc.id, userData));
+    }
+
+    return usuarios;
+  }
+
+  /// Stream em tempo real dos IDs de eventos em que [userID] está inscrito.
+  /// Usado por [MyEventsPage] para atualização automática sem reload.
   Stream<List<String>> streamEventoIdsPorUsuario(String userID) {
     return _col
         .where('userID', isEqualTo: userID)

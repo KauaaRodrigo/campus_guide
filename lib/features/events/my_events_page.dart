@@ -390,6 +390,34 @@ class _MyEventDetailsModal extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 14),
+                      if (evento.statusEfetivo == EventStatus.cancelado) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.warning_amber_rounded,
+                                  color: Colors.red),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Este evento foi cancelado. Sua inscrição foi invalidada.',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       Text(
                         evento.descricao,
                         style: const TextStyle(fontSize: 14, height: 1.55),

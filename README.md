@@ -44,7 +44,7 @@ Sprint 3 - (27/05 - 03/06)
 
 ## Vídeo de defesa
 
-- Kauã 
+- Kauã | Modal detalhado da Home + Tela meus eventos
 
 - Luís Gustavo 
 
