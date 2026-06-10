@@ -168,9 +168,20 @@ class _EditEventPageState extends State<EditEventPage> {
       return;
     }
 
+    // REGRA: Não deve ser permitido reduzir o número de vagas abaixo do número de inscritos
+    if (vagas < widget.evento.vagasOcupadas) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Impossível reduzir vagas para $vagas. O evento já possui ${widget.evento.vagasOcupadas} inscritos.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final partesDia = _diaCtrl.text.trim().split('/');
     final partesHora = _horaCtrl.text.trim().split(':');
-
     final partesHoraFim = _horaFimCtrl.text.trim().split(':');
 
     if (partesDia.length != 3 ||
@@ -377,8 +388,6 @@ class _EditEventPageState extends State<EditEventPage> {
   }
 }
 
-// ── Widgets internos ──────────────────────────────────────────────────────────
-
 class _CampoComIcone extends StatelessWidget {
   final String hint;
   final TextEditingController controller;
@@ -430,7 +439,6 @@ class _CampoComIcone extends StatelessWidget {
     );
   }
 }
-
 
 class _MinistrantesField extends StatelessWidget {
   final TextEditingController controller;
