@@ -19,10 +19,9 @@ class EnrollmentRepository {
     final inscricaoRef = _col.doc(_docId(userID, eventoID));
     final eventoRef = _db.collection('eventos').doc(eventoID);
 
-    // runTransaction garante a consistência e resolve concorrência de acessos simultâneos
     await _db.runTransaction((transaction) async {
       final inscricaoDoc = await transaction.get(inscricaoRef);
-      
+
       // REGRA: Usuário não pode se inscrever mais de uma vez no mesmo evento
       if (inscricaoDoc.exists) {
         throw Exception('Você já está inscrito neste evento.');
@@ -39,11 +38,14 @@ class EnrollmentRepository {
       final vagasOcupadas = data['vagasOcupadas'] ?? 0;
       final Timestamp? dataInicioTimestamp = data['dataInicio'];
 
-      // REGRA: Evento deve estar com status “Aberto” para permitir inscrição
-      if (status != EventStatus.ativo.name) {
-        throw Exception('Este evento não está aberto para inscrições.');
+      // REGRA: Evento cancelado
       if (status == EventStatus.cancelado.name) {
         throw Exception('Este evento está cancelado.');
+      }
+
+      // REGRA: Evento deve estar ativo
+      if (status != EventStatus.ativo.name) {
+        throw Exception('Este evento não está aberto para inscrições.');
       }
 
       // REGRA: Devem existir vagas remanescentes
@@ -54,11 +56,12 @@ class EnrollmentRepository {
       // REGRA: Inscrições podem ocorrer até 10 min antes do começo do evento
       if (dataInicioTimestamp != null) {
         final dataInicio = dataInicioTimestamp.toDate();
-        final dataLimiteInscricao = dataInicio.subtract(const Duration(minutes: 10));
-        
+        final dataLimiteInscricao =
+            dataInicio.subtract(const Duration(minutes: 10));
+
         if (DateTime.now().isAfter(dataLimiteInscricao)) {
           throw Exception(
-            'Inscrições encerradas. O prazo finalizou 10 minutos antes do início do evento.'
+            'Inscrições encerradas. O prazo finalizou 10 minutos antes do início do evento.',
           );
         }
       }
@@ -69,7 +72,7 @@ class EnrollmentRepository {
         'eventoID': eventoID,
         'criadoEm': FieldValue.serverTimestamp(),
       });
-      
+
       // Incrementa a vaga ocupada de forma atômica
       transaction.update(eventoRef, {
         'vagasOcupadas': vagasOcupadas + 1,
@@ -92,19 +95,20 @@ class EnrollmentRepository {
       }
 
       final eventoDoc = await transaction.get(eventoRef);
-      
-      // REGRA: Cancelamentos da inscrição só podem ocorrer até 10 min antes do começo do evento
+
+      // REGRA: Cancelamentos só até 10 min antes
       if (eventoDoc.exists) {
         final data = eventoDoc.data() as Map<String, dynamic>;
         final Timestamp? dataInicioTimestamp = data['dataInicio'];
-        
+
         if (dataInicioTimestamp != null) {
           final dataInicio = dataInicioTimestamp.toDate();
-          final dataLimiteCancelamento = dataInicio.subtract(const Duration(minutes: 10));
-          
+          final dataLimiteCancelamento =
+              dataInicio.subtract(const Duration(minutes: 10));
+
           if (DateTime.now().isAfter(dataLimiteCancelamento)) {
             throw Exception(
-              'Cancelamento bloqueado. O prazo finalizou 10 minutos antes do início do evento.'
+              'Cancelamento bloqueado. O prazo finalizou 10 minutos antes do início do evento.',
             );
           }
         }
@@ -115,8 +119,8 @@ class EnrollmentRepository {
           : 0;
 
       transaction.delete(inscricaoRef);
+
       if (eventoDoc.exists) {
-        // REGRA: Cancelamentos abrem vagas para novos usuários
         transaction.update(eventoRef, {
           'vagasOcupadas': vagasOcupadas > 0 ? vagasOcupadas - 1 : 0,
           'atualizadoEm': Timestamp.fromDate(DateTime.now()),
@@ -140,7 +144,7 @@ class EnrollmentRepository {
         .toList();
   }
 
-  Future<List<AppUser>> buscarUsuariosInscritosDoEvento( //avisa os inscritos no email
+  Future<List<AppUser>> buscarUsuariosInscritosDoEvento(
     String eventoID,
   ) async {
     final snapshot = await _col.where('eventoID', isEqualTo: eventoID).get();
@@ -162,8 +166,6 @@ class EnrollmentRepository {
     return usuarios;
   }
 
-  /// Stream em tempo real dos IDs de eventos em que [userID] está inscrito.
-  /// Usado por [MyEventsPage] para atualização automática sem reload.
   Stream<List<String>> streamEventoIdsPorUsuario(String userID) {
     return _col
         .where('userID', isEqualTo: userID)
