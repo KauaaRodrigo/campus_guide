@@ -455,6 +455,34 @@ class _EventDetailsModal extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (evento.statusEfetivo == EventStatus.cancelado) ...[
+                        const SizedBox(height: 14), //aviso de evento cancelado
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.warning_amber_rounded,
+                                  color: Colors.red),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Este evento foi cancelado. Inscrições não são permitidas.',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 14),
                       Text(
                         evento.descricao,
@@ -524,11 +552,16 @@ class _EventDetailsModal extends StatelessWidget {
                         children: [
                           Expanded(
                             child: _PrimaryButton(
-                              label: isInscrito
-                                  ? 'Cancelar inscrição'
-                                  : 'Inscrever-se',
-                              onPressed: () =>
-                                  _alterarInscricao(context, isInscrito),
+                              label: evento.statusEfetivo == EventStatus.cancelado
+                                  ? 'Evento cancelado'
+                                  : isInscrito
+                                      ? 'Cancelar inscrição'
+                                      : 'Inscrever-se',
+                              onPressed: evento.statusEfetivo == EventStatus.cancelado &&
+                                      !isInscrito
+                                  ? null
+                                  : () =>
+                                      _alterarInscricao(context, isInscrito),
                             ),
                           ),
                         ],
@@ -661,9 +694,9 @@ class _SpeakerTile extends StatelessWidget {
 
 class _PrimaryButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
-  const _PrimaryButton({required this.label, required this.onPressed});
+  const _PrimaryButton({required this.label, this.onPressed});
 
   @override
   Widget build(BuildContext context) {

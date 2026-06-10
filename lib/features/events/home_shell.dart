@@ -84,7 +84,6 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: AppBottomNavBar(
         currentIndex: currentIndex,
         onTap: _onTabTap,
-        isDocente: isDocente,
       ),
     );
   }
