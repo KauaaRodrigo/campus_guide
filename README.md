@@ -164,6 +164,6 @@ Sprint 3 - (27/05 - 03/06)
 
 - Luiz Armando 
 
-- Davi Reis | Perfil e Editar Perfil | https://drive.google.com/file/d/19xVbxOGEffQJsbceN3jcgCUDn5ZoDHbE/view?usp=sharing
-
+- Davi Reis | Perfil e Editar Perfil | https://drive.google.com/file/d/17pOSvneUC70ukvUlGGAfHy4FT76heTzW/view?usp=sharing
+ 
 - João Pedro S. Caetano | Criar Evento e Editar Evento |
