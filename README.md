@@ -44,7 +44,7 @@ Sprint 3 - (27/05 - 03/06)
 
 ## Vídeo de defesa
 
-- Kauã | Modal detalhado da Home + Tela meus eventos
+- Kauã | Modal detalhado da Home + Tela meus eventos | https://drive.google.com/drive/folders/1bt_1qUycKBOy7F71_2vfNG81SHPsHyTG?usp=sharing
 
 - Luís Gustavo | Sistema de Login com Google, Configuração de permissões e Ajuste da Nav Bar | https://drive.google.com/file/d/1i7LiV8reu5pkQ8TcbC1Gpx1r6MZOCm4c/view?usp=drivesdk
 
